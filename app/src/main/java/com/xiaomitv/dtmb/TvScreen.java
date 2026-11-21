@@ -57,7 +57,6 @@ final class TvScreen {
     private List<Option> optionItems = Collections.emptyList();
     private View sidebarFocus;
     private int optionSelection;
-    private boolean onlyFavorites;
 
     TvScreen(Activity activity, Handler handler, Actions actions) {
         this.activity = activity;
@@ -152,7 +151,7 @@ final class TvScreen {
 
     void showChannels() {
         if (push(Layer.CHANNELS)) {
-            sidebar.focusInitial(onlyFavorites);
+            sidebar.focusInitial();
             if (ValueAnimator.areAnimatorsEnabled()) {
                 sidebar.view.setTranslationY(style.dp(24));
                 sidebar.view.setAlpha(0f);
@@ -196,7 +195,6 @@ final class TvScreen {
 
     void channels(List<Channel> channels, Set<String> favorites, long playingId,
                   boolean onlyFavorites, String message, Function<Channel, Program> nowPlaying) {
-        this.onlyFavorites = onlyFavorites;
         sidebar.update(channels, favorites, playingId, onlyFavorites, message, nowPlaying);
     }
 
@@ -281,7 +279,6 @@ final class TvScreen {
         clearBanner();
         if (previous == Layer.CHANNELS) {
             sidebarFocus = sidebar.view.findFocus();
-            sidebar.saveSelection();
         } else if (previous == Layer.OPTIONS) {
             optionSelection = optionsList.getSelectedItemPosition();
         }
@@ -304,7 +301,7 @@ final class TvScreen {
         }
         viewFor(top).setVisibility(View.VISIBLE);
         switch (top) {
-            case CHANNELS -> sidebar.restoreFocus(sidebarFocus, onlyFavorites);
+            case CHANNELS -> sidebar.restoreFocus(sidebarFocus);
             case GUIDE -> guide.restoreFocus();
             case OPTIONS -> focusOptions();
         }

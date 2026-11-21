@@ -111,21 +111,21 @@ final class ChannelSidebar {
         // 按键导航绑定
         filterBtn.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCurrentCard();
+                focusCard(selectedId);
                 return true;
             }
             return false;
         });
         guideBtn.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCurrentCard();
+                focusCard(selectedId);
                 return true;
             }
             return false;
         });
         optionsBtn.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCurrentCard();
+                focusCard(selectedId);
                 return true;
             }
             return false;
@@ -153,6 +153,8 @@ final class ChannelSidebar {
 
     void update(List<Channel> channels, Set<String> favorites, long playingId, boolean onlyFavorites,
                 String message, Function<Channel, Program> nowPlaying) {
+        boolean cardHadFocus = cardsContainer.hasFocus();
+        long focusId = this.playingId == playingId ? selectedId : playingId;
         this.channels = channels;
         this.favorites = favorites;
         this.playingId = playingId;
@@ -164,6 +166,7 @@ final class ChannelSidebar {
         scroll.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);
 
         buildCards();
+        if (cardHadFocus && !focusCard(focusId)) filterBtn.requestFocus();
     }
 
     private void buildCards() {
@@ -300,7 +303,9 @@ final class ChannelSidebar {
                 applyStyle.run();
                 if (hasFocus) {
                     selectedId = currentChannel.id();
-                    scroll.smoothScrollTo(v.getLeft() - style.dp(40), 0);
+                    if (!scroll.isLayoutRequested() && !v.isLayoutRequested()) {
+                        scroll.smoothScrollTo(v.getLeft() - style.dp(40), 0);
+                    }
                 }
             });
 
@@ -310,38 +315,33 @@ final class ChannelSidebar {
         }
     }
 
-    void saveSelection() {
-        // 当前选中 ID 已在 setOnFocusChangeListener 中记录
-    }
-
-    void restoreFocus(View previousFocus, boolean onlyFavorites) {
-        if (previousFocus != null && previousFocus.requestFocus()) {
+    void restoreFocus(View previousFocus) {
+        if (previousFocus != null
+                && (previousFocus.getParent() == cardsContainer || previousFocus.getParent() == controlsRow)
+                && previousFocus.requestFocus()) {
             return;
         }
-        focusInitial(onlyFavorites);
+        if (!focusCard(selectedId)) filterBtn.requestFocus();
     }
 
-    void focusInitial(boolean onlyFavorites) {
-        if (!focusCurrentCard()) {
-            filterBtn.requestFocus();
-        }
+    void focusInitial() {
+        selectedId = -1;
+        if (!focusCard(playingId)) filterBtn.requestFocus();
     }
 
-    private boolean focusCurrentCard() {
-        if (channels.isEmpty() || cardsContainer.getChildCount() == 0) return false;
+    private boolean focusCard(long preferredId) {
         int targetIndex = 0;
         for (int i = 0; i < channels.size(); i++) {
-            if (channels.get(i).id() == (selectedId != -1 ? selectedId : playingId)) {
+            long id = channels.get(i).id();
+            if (id == preferredId) {
                 targetIndex = i;
                 break;
             }
+            if (id == playingId) targetIndex = i;
         }
-        if (targetIndex < cardsContainer.getChildCount()) {
-            View card = cardsContainer.getChildAt(targetIndex);
-            card.requestFocus();
-            scroll.smoothScrollTo(card.getLeft() - style.dp(40), 0);
-            return true;
-        }
-        return false;
+        View card = cardsContainer.getChildAt(targetIndex);
+        if (card == null || !card.requestFocus()) return false;
+        selectedId = channels.get(targetIndex).id();
+        return true;
     }
 }

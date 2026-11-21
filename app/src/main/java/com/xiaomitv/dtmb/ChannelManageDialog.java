@@ -3,18 +3,18 @@ package com.xiaomitv.dtmb;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -45,6 +45,7 @@ final class ChannelManageDialog extends Dialog {
     private final ListView listView;
     private final TextView subtitleView;
     private final Button restoreHiddenBtn;
+    private final Button doneBtn;
 
     ChannelManageDialog(Context context, TvStyle style, List<Channel> allChannels,
                         Set<String> hiddenChannels, Set<String> favoriteChannels,
@@ -92,7 +93,7 @@ final class ChannelManageDialog extends Dialog {
         // 顶部操作按钮
         Button resetOrderBtn = style.capsuleButton("恢复默认排序", this::confirmResetOrder);
         restoreHiddenBtn = style.capsuleButton("恢复全部显示", this::restoreAllHidden);
-        Button doneBtn = style.capsuleButton("完成", this::dismiss);
+        doneBtn = style.capsuleButton("完成", this::dismiss);
 
         addCapsule(header, resetOrderBtn);
         addCapsule(header, restoreHiddenBtn);
@@ -115,10 +116,16 @@ final class ChannelManageDialog extends Dialog {
 
         // 2. 频道列表
         listView = style.list();
+        listView.setId(View.generateViewId());
+        resetOrderBtn.setNextFocusDownId(listView.getId());
+        restoreHiddenBtn.setNextFocusDownId(listView.getId());
+        doneBtn.setNextFocusDownId(listView.getId());
         listView.setDivider(new ColorDrawable(Color.TRANSPARENT));
         listView.setDividerHeight(style.dp(6));
         adapter = new ChannelAdapter();
         listView.setAdapter(adapter);
+        listView.setOnItemClickListener((parent, row, position, id) -> showChannelActionMenu(position));
+        listView.setOnKeyListener((view, keyCode, event) -> handleListKey(keyCode, event));
 
         LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(-1, 0, 1f);
         root.addView(listView, listParams);
@@ -152,10 +159,23 @@ final class ChannelManageDialog extends Dialog {
         if (targetIndex < channels.size()) {
             final int pos = targetIndex;
             listView.post(() -> {
-                listView.setSelection(pos);
                 listView.requestFocus();
+                listView.setSelection(pos);
             });
         }
+    }
+
+    private boolean handleListKey(int keyCode, KeyEvent event) {
+        if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+            return false;
+        }
+        int position = listView.getSelectedItemPosition();
+        if (position == ListView.INVALID_POSITION) return false;
+
+        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+            moveChannel(position, position + (keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1));
+        }
+        return true;
     }
 
     private void addCapsule(LinearLayout parent, Button button) {
@@ -181,6 +201,7 @@ final class ChannelManageDialog extends Dialog {
             }
         }
         subtitleView.setText("共 " + total + " 个频道 · " + hiddenCount + " 个已隐藏");
+        if (hiddenCount == 0 && restoreHiddenBtn.hasFocus()) doneBtn.requestFocus();
         restoreHiddenBtn.setVisibility(hiddenCount > 0 ? View.VISIBLE : View.GONE);
     }
 
@@ -200,22 +221,6 @@ final class ChannelManageDialog extends Dialog {
         channels.add(to, c);
         notifyChange();
         listView.setSelection(to);
-    }
-
-    private void moveToTop(int from) {
-        if (from <= 0 || from >= channels.size()) return;
-        Channel c = channels.remove(from);
-        channels.add(0, c);
-        notifyChange();
-        listView.setSelection(0);
-    }
-
-    private void moveToBottom(int from) {
-        if (from < 0 || from >= channels.size() - 1) return;
-        Channel c = channels.remove(from);
-        channels.add(c);
-        notifyChange();
-        listView.setSelection(channels.size() - 1);
     }
 
     private void toggleHidden(int position) {
@@ -299,9 +304,9 @@ final class ChannelManageDialog extends Dialog {
                     } else if (selected.contains("向下移动一位")) {
                         moveChannel(position, position + 1);
                     } else if (selected.contains("移至顶部")) {
-                        moveToTop(position);
+                        moveChannel(position, 0);
                     } else if (selected.contains("移至末尾")) {
-                        moveToBottom(position);
+                        moveChannel(position, channels.size() - 1);
                     } else if (selected.contains("收藏")) {
                         toggleFavorite(position);
                     }
@@ -311,6 +316,9 @@ final class ChannelManageDialog extends Dialog {
     }
 
     private final class ChannelAdapter extends BaseAdapter {
+        private final ColorStateList visibleChannelText = style.focusText(Color.WHITE);
+        private final ColorStateList mutedChannelText = style.focusText(TvStyle.MUTED);
+
         @Override
         public int getCount() {
             return channels.size();
@@ -334,19 +342,31 @@ final class ChannelManageDialog extends Dialog {
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(style.dp(14), style.dp(8), style.dp(14), style.dp(8));
-                row.setFocusable(true);
-                row.setFocusableInTouchMode(true);
-                row.setClickable(true);
+                StateListDrawable background = new StateListDrawable();
+                background.addState(new int[]{android.R.attr.state_selected},
+                        style.surface(TvStyle.FOCUS, 8, Color.TRANSPARENT));
+                background.addState(new int[]{android.R.attr.state_activated},
+                        style.surface(0x66181920, 8, 0x22ffffff));
+                background.addState(new int[0], style.surface(0xd0222530, 8, 0x33ffffff));
+                row.setBackground(background);
 
                 // 序号徽章
                 TextView numView = style.text(12, 0xffa0a4b5, true);
                 numView.setPadding(style.dp(6), style.dp(2), style.dp(6), style.dp(2));
                 numView.setGravity(Gravity.CENTER);
                 numView.setMinWidth(style.dp(36));
+                numView.setDuplicateParentStateEnabled(true);
+                numView.setTextColor(style.focusText(TvStyle.MUTED));
+                StateListDrawable numberBackground = new StateListDrawable();
+                numberBackground.addState(new int[]{android.R.attr.state_selected},
+                        style.surface(0x1f000000, 4, Color.TRANSPARENT));
+                numberBackground.addState(new int[0], style.surface(0x33ffffff, 4, Color.TRANSPARENT));
+                numView.setBackground(numberBackground);
                 row.addView(numView);
 
                 // 频道名称
                 TextView nameView = style.text(14, 0xffffffff, true);
+                nameView.setDuplicateParentStateEnabled(true);
                 nameView.setPadding(style.dp(10), 0, style.dp(8), 0);
                 style.trim(nameView, 1);
                 LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(0, -2, 1f);
@@ -383,12 +403,13 @@ final class ChannelManageDialog extends Dialog {
 
                 // 快捷提示标签
                 TextView actionHint = style.text(11, 0xff717684, false);
+                actionHint.setDuplicateParentStateEnabled(true);
+                actionHint.setTextColor(style.focusText(0xff717684));
                 actionHint.setText("← 上移 / 下移 →");
                 actionHint.setPadding(style.dp(12), 0, 0, 0);
                 row.addView(actionHint);
 
-                holder = new ViewHolder(row, numView, nameView, playingBadge, favBadge,
-                        hiddenBadge, actionHint);
+                holder = new ViewHolder(numView, nameView, playingBadge, favBadge, hiddenBadge);
                 row.setTag(holder);
                 convertView = row;
             } else {
@@ -405,78 +426,30 @@ final class ChannelManageDialog extends Dialog {
             String orderStr = String.format("%02d", position + 1);
             holder.numView.setText(orderStr);
             holder.nameView.setText(channel.label());
+            holder.nameView.setTextColor(isHidden ? mutedChannelText : visibleChannelText);
+            convertView.setActivated(isHidden);
 
             holder.playingBadge.setVisibility(isPlaying ? View.VISIBLE : View.GONE);
             holder.favBadge.setVisibility(isFav ? View.VISIBLE : View.GONE);
             holder.hiddenBadge.setVisibility(isHidden ? View.VISIBLE : View.GONE);
-
-            // 聚焦/失焦样式更新
-            final View rowView = convertView;
-            final int pos = position;
-
-            Runnable updateStyle = () -> {
-                boolean focused = rowView.isFocused();
-                if (focused) {
-                    rowView.setBackground(style.surface(0xffffffff, 8, Color.TRANSPARENT));
-                    holder.numView.setTextColor(0xff121316);
-                    holder.numView.setBackground(style.surface(0x1f000000, 4, Color.TRANSPARENT));
-                    holder.nameView.setTextColor(0xff121316);
-                    holder.actionHint.setTextColor(0xff4b5563);
-                } else {
-                    int bgColor = isHidden ? 0x66181920 : 0xd0222530;
-                    rowView.setBackground(style.surface(bgColor, 8, isHidden ? 0x22ffffff : 0x33ffffff));
-                    holder.numView.setTextColor(0xff8c90a0);
-                    holder.numView.setBackground(style.surface(0x33ffffff, 4, Color.TRANSPARENT));
-                    holder.nameView.setTextColor(isHidden ? 0xff8c90a0 : 0xffffffff);
-                    holder.actionHint.setTextColor(0xff717684);
-                }
-            };
-            updateStyle.run();
-
-            rowView.setOnFocusChangeListener((v, hasFocus) -> updateStyle.run());
-
-            // 点击弹出操作菜单
-            rowView.setOnClickListener(v -> showChannelActionMenu(pos));
-
-            // 按键监听：左右键快速上移/下移
-            rowView.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    if (pos > 0) {
-                        moveChannel(pos, pos - 1);
-                        return true;
-                    }
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    if (pos < channels.size() - 1) {
-                        moveChannel(pos, pos + 1);
-                        return true;
-                    }
-                }
-                return false;
-            });
 
             return convertView;
         }
     }
 
     private static final class ViewHolder {
-        final View root;
         final TextView numView;
         final TextView nameView;
         final TextView playingBadge;
         final TextView favBadge;
         final TextView hiddenBadge;
-        final TextView actionHint;
-
-        ViewHolder(View root, TextView numView, TextView nameView, TextView playingBadge,
-                   TextView favBadge, TextView hiddenBadge, TextView actionHint) {
-            this.root = root;
+        ViewHolder(TextView numView, TextView nameView, TextView playingBadge,
+                   TextView favBadge, TextView hiddenBadge) {
             this.numView = numView;
             this.nameView = nameView;
             this.playingBadge = playingBadge;
             this.favBadge = favBadge;
             this.hiddenBadge = hiddenBadge;
-            this.actionHint = actionHint;
         }
     }
 }
