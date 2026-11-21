@@ -198,11 +198,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!screen.panelOpen()) {
             boolean released = event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled();
             switch (key) {
-                case KeyEvent.KEYCODE_DPAD_UP -> {
-                    if (firstPress) step(1);
+                case KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (firstPress) step(key == KeyEvent.KEYCODE_DPAD_UP ? 1 : -1);
                     return true;
                 }
-                case KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+                case KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
                         KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                     if (released) openChannels();
                     return true;
@@ -229,7 +229,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     @Override
     public void select(TvListings.Channel channel) {
         if (!active) return;
+        current = channel;
+        preferences.edit().putLong("last_channel", channel.id()).apply();
         screen.hidePanels();
+        renderChannels();
+        if (screen.guideOpen()) screen.updateGuide(channels, channel.id(), guide::schedule);
         if (playback.requestedChannelId() == -1 && playback.isReady(channel.id())) {
             showProgram(channel, true, false);
         } else {
@@ -246,7 +250,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     public void onTuning(long id, boolean switching) {
         if (switching) screen.beginTransition();
         TvListings.Channel target = findChannel(id);
-        if (target != null) showProgram(target, true, true);
+        if (target != null) {
+            current = target;
+            showProgram(target, true, true);
+            renderChannels();
+            if (screen.guideOpen()) screen.updateGuide(channels, target.id(), guide::schedule);
+        }
     }
 
     @Override

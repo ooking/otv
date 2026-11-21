@@ -306,8 +306,9 @@ final class GuideGrid extends LinearLayout {
 
         if (program != null) {
             heroTitle.setText(program.title());
-            String timeSpan = timeFormat.format(new Date(program.start())) + " ~ "
-                    + timeFormat.format(new Date(program.end()));
+            long minutes = Math.max(1, (program.end() - program.start()) / 60000L);
+            String timeSpan = channel.name() + "   " + timeFormat.format(new Date(program.start())) + " ~ "
+                    + timeFormat.format(new Date(program.end())) + " (" + minutes + "分钟)";
             heroMeta.setText(timeSpan);
             boolean isLive = now >= program.start() && now < program.end();
             heroLiveTag.setVisibility(isLive ? VISIBLE : GONE);
@@ -315,7 +316,8 @@ final class GuideGrid extends LinearLayout {
             heroSynopsis.setText(TextUtils.isEmpty(desc) ? "暂无详细内容介绍。" : desc);
         } else {
             heroTitle.setText(NO_PROGRAM);
-            heroMeta.setText(timeFormat.format(new Date(slot.start())) + " ~ " + timeFormat.format(new Date(slot.end())));
+            heroMeta.setText(channel.name() + "   " + timeFormat.format(new Date(slot.start())) + " ~ "
+                    + timeFormat.format(new Date(slot.end())));
             heroLiveTag.setVisibility(GONE);
             heroSynopsis.setText("此时间段暂未获取到电台的节目单广播或网络 EPG 资料。");
         }
@@ -427,17 +429,9 @@ final class GuideGrid extends LinearLayout {
                 paint.setColor(0xff222530);
                 canvas.drawLine(colRight, -2 * hourHeight, colRight, (hoursCount + 2) * hourHeight, paint);
             }
-
-            // 绘制当前时间水平红线指示
-            if (now >= windowStart - 2 * HOUR && now <= windowStart + WINDOW + 2 * HOUR) {
-                float nowY = (float) (now - windowStart) / HOUR * hourHeight;
-                paint.setColor(TvStyle.RED_LIVE);
-                paint.setStrokeWidth(style.dp(2));
-                canvas.drawLine(0, nowY, channels.size() * columnWidth, nowY, paint);
-            }
             canvas.restore();
 
-            // 2. 绘制固定左侧时间标尺（只受纵向滚动影响）
+            // 2. 绘制固定左侧时间标尺（只受纵向滚动影响，突出当前时间对应小时）
             canvas.save();
             canvas.clipRect(0, headerHeight, rulerWidth, h);
             paint.setColor(0xff14161d);
@@ -447,11 +441,28 @@ final class GuideGrid extends LinearLayout {
             for (int i = -2; i <= hoursCount; i++) {
                 long t = windowStart + i * HOUR;
                 float y = i * hourHeight;
-                // 时间刻度文本
-                textPaint.setColor(TvStyle.MUTED);
-                textPaint.setTextSize(style.dp(12));
-                textPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText(hourFormat.format(new Date(t)), rulerWidth / 2f, y + style.dp(20), textPaint);
+                boolean isCurrentHour = (now >= t && now < t + HOUR);
+
+                if (isCurrentHour) {
+                    // 突出高亮当前时间所在小时：高光药丸底色 + 深黑加粗文字
+                    float badgeMargin = style.dp(4);
+                    rect.set(badgeMargin, y + style.dp(4), rulerWidth - badgeMargin, y + style.dp(30));
+                    paint.setColor(0xffffffff);
+                    canvas.drawRoundRect(rect, style.dp(13), style.dp(13), paint);
+
+                    textPaint.setColor(0xff121316);
+                    textPaint.setTextSize(style.dp(12));
+                    textPaint.setTypeface(Typeface.create("sans-serif-bold", Typeface.BOLD));
+                    textPaint.setTextAlign(Paint.Align.CENTER);
+                    canvas.drawText(hourFormat.format(new Date(t)), rulerWidth / 2f, y + style.dp(22), textPaint);
+                    textPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+                } else {
+                    // 普通时间刻度文本
+                    textPaint.setColor(TvStyle.MUTED);
+                    textPaint.setTextSize(style.dp(12));
+                    textPaint.setTextAlign(Paint.Align.CENTER);
+                    canvas.drawText(hourFormat.format(new Date(t)), rulerWidth / 2f, y + style.dp(20), textPaint);
+                }
 
                 // 刻度线
                 paint.setColor(0xff2a2d3a);
@@ -515,7 +526,7 @@ final class GuideGrid extends LinearLayout {
             float textLeft = left + style.dp(36);
             float maxTextWidth = right - textLeft - style.dp(8);
             if (maxTextWidth > 0) {
-                String clipped = TextUtils.ellipsize(channel.label(), textPaint, maxTextWidth,
+                String clipped = TextUtils.ellipsize(channel.name(), textPaint, maxTextWidth,
                         TextUtils.TruncateAt.END).toString();
                 canvas.drawText(clipped, textLeft, headerHeight / 2f + style.dp(4), textPaint);
             }

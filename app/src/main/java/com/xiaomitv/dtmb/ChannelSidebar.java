@@ -201,7 +201,7 @@ final class ChannelSidebar {
             topRow.addView(numBadge);
 
             TextView nameView = style.text(14, 0xffffffff, true);
-            nameView.setText(channel.label());
+            nameView.setText(channel.name());
             style.trim(nameView, 1);
             LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(0, -2, 1f);
             nameLp.leftMargin = style.dp(8);
@@ -215,18 +215,32 @@ final class ChannelSidebar {
 
             card.addView(topRow);
 
-            // 2. 中部分割线
-            View divider = new View(context);
-            divider.setBackgroundColor(0x22ffffff);
-            LinearLayout.LayoutParams divParams = new LinearLayout.LayoutParams(-1, style.dp(1));
-            divParams.setMargins(0, style.dp(8), 0, style.dp(6));
-            card.addView(divider, divParams);
+            // 2. 中部播放进度条（取代原先的普通分割线）
+            android.widget.ProgressBar progressBar = new android.widget.ProgressBar(context, null,
+                    android.R.attr.progressBarStyleHorizontal);
+            progressBar.setMax(1000);
+            LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, style.dp(3));
+            progressParams.setMargins(0, style.dp(8), 0, style.dp(6));
+            card.addView(progressBar, progressParams);
 
-            // 3. 底部：播出时间与节目名
+            long nowTime = System.currentTimeMillis();
+            boolean hasProgram = (program != null);
+            boolean isPlayingNow = hasProgram && (nowTime >= program.start() && nowTime <= program.end());
+            if (isPlayingNow && program.end() > program.start()) {
+                int progressValue = (int) ((nowTime - program.start()) * 1000L / (program.end() - program.start()));
+                progressBar.setProgress(Math.max(0, Math.min(1000, progressValue)));
+                progressBar.setVisibility(View.VISIBLE);
+            } else {
+                progressBar.setProgress(0);
+                progressBar.setVisibility(hasProgram ? View.VISIBLE : View.INVISIBLE);
+            }
+
+            // 3. 底部：播出完整起止时间与节目名
             TextView timeView = style.text(11, 0xff9094a6, false);
             style.trim(timeView, 1);
             if (program != null) {
-                timeView.setText(timeFormat.format(new Date(program.start())) + "~");
+                timeView.setText(timeFormat.format(new Date(program.start())) + " ~ "
+                        + timeFormat.format(new Date(program.end())));
             } else {
                 timeView.setText("当前时段");
             }
@@ -251,7 +265,8 @@ final class ChannelSidebar {
                     numBadge.setBackground(style.surface(0x1a000000, 6, Color.TRANSPARENT));
                     numBadge.setTextColor(0xff4b5563);
                     nameView.setTextColor(0xff121316); // 纯黑粗体电台名！彻底解决看不见问题
-                    divider.setBackgroundColor(0x1a000000);
+                    progressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff2563eb));
+                    progressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x22000000));
                     timeView.setTextColor(0xff6b7280);
                     progView.setTextColor(0xff121316); // 纯黑粗体节目名！
                 } else {
@@ -260,7 +275,8 @@ final class ChannelSidebar {
                     numBadge.setBackground(style.surface(0x33ffffff, 6, Color.TRANSPARENT));
                     numBadge.setTextColor(0xffa0a4b5);
                     nameView.setTextColor(0xffffffff);
-                    divider.setBackgroundColor(0x22ffffff);
+                    progressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xff3b82f6));
+                    progressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x26ffffff));
                     timeView.setTextColor(0xff9094a6);
                     progView.setTextColor(0xffdcdfe8);
                 }
