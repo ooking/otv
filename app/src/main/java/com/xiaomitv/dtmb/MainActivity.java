@@ -79,6 +79,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private MediaSession mediaSession;
     private SharedPreferences preferences;
     private Set<String> favorites = Collections.emptySet();
+    private Set<String> hiddenChannels = Collections.emptySet();
+    private List<Long> channelOrder = Collections.emptyList();
+    private List<TvListings.Channel> rawChannels = Collections.emptyList();
+    private List<TvListings.Channel> allChannels = Collections.emptyList();
     private List<TvListings.Channel> channels = Collections.emptyList();
     private TvListings.Channel current;
     private CancellationSignal channelQuery;
@@ -113,6 +117,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         listings = new TvListings(getContentResolver());
         preferences = getSharedPreferences("live_tv", MODE_PRIVATE);
         favorites = new HashSet<>(preferences.getStringSet("favorites", Collections.emptySet()));
+        hiddenChannels = ChannelManager.loadHidden(preferences);
+        channelOrder = ChannelManager.loadOrder(preferences);
         screen = new TvScreen(this, handler, this);
         guide = new ProgramGuide(this, listings, handler, this::renderGuide);
         playback = new Playback(screen.video, getSystemService(AudioManager.class), preferences, handler,
@@ -412,7 +418,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             String favorite = favorites.contains(Long.toString(current.id()))
                     ? "取消收藏当前频道" : "收藏当前频道";
             items.add(new TvScreen.Option(favorite, this::favorite));
+            String hideLabel = hiddenChannels.contains(Long.toString(current.id()))
+                    ? "恢复当前频道显示" : "隐藏当前频道";
+            items.add(new TvScreen.Option(hideLabel, this::toggleCurrentChannelHidden));
         }
+        items.add(new TvScreen.Option("频道管理（排序与隐藏）", this::openChannelManager));
         if (!canReadListings()) {
             items.add(new TvScreen.Option("授予电视节目权限", this::requestListingsPermission));
         }
@@ -432,6 +442,50 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             items.add(new TvScreen.Option(label, this::showXiaomiAudioSetting));
         }
         return items;
+    }
+
+    private void toggleCurrentChannelHidden() {
+        if (current == null) return;
+        String idStr = Long.toString(current.id());
+        if (hiddenChannels.contains(idStr)) {
+            hiddenChannels.remove(idStr);
+            Toast.makeText(this, "已恢复显示：" + current.name(), Toast.LENGTH_SHORT).show();
+        } else {
+            hiddenChannels.add(idStr);
+            Toast.makeText(this, "已隐藏频道：" + current.name() + "，可从「频道管理」恢复", Toast.LENGTH_SHORT).show();
+        }
+        ChannelManager.saveHidden(preferences, hiddenChannels);
+        reapplyChannels();
+    }
+
+    private void openChannelManager() {
+        if (allChannels.isEmpty() && rawChannels.isEmpty()) {
+            Toast.makeText(this, "暂无频道可供管理", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        screen.hidePanels();
+        ChannelManageDialog dialog = new ChannelManageDialog(this, screen.style, allChannels,
+                hiddenChannels, favorites, currentId(), new ChannelManageDialog.Listener() {
+            @Override
+            public void onChannelsUpdated(List<TvListings.Channel> newOrder, Set<String> hidden, Set<String> favs) {
+                channelOrder = ChannelManager.extractIds(newOrder);
+                ChannelManager.saveOrder(preferences, channelOrder);
+                hiddenChannels = new HashSet<>(hidden);
+                ChannelManager.saveHidden(preferences, hiddenChannels);
+                favorites = new HashSet<>(favs);
+                preferences.edit().putStringSet("favorites", new HashSet<>(favorites)).apply();
+                reapplyChannels();
+            }
+
+            @Override
+            public void onResetDefaultOrder() {
+                channelOrder = Collections.emptyList();
+                ChannelManager.saveOrder(preferences, channelOrder);
+                reapplyChannels();
+                Toast.makeText(MainActivity.this, "已恢复系统默认排序", Toast.LENGTH_SHORT).show();
+            }
+        });
+        dialog.show();
     }
 
     private void retune() {
@@ -686,8 +740,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     }
 
     private void applyChannels(List<TvListings.Channel> result, String message) {
-        channels = result;
-        guide.setChannels(result);
+        rawChannels = result;
+        ChannelManager.Result channelResult = ChannelManager.apply(result, channelOrder, hiddenChannels);
+        allChannels = channelResult.allSorted();
+        channels = channelResult.visible();
+        guide.setChannels(channels);
         emptyMessage = message;
         if (result.isEmpty()) {
             current = null;
@@ -702,14 +759,62 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             return;
         }
 
+        if (channels.isEmpty()) {
+            current = null;
+            playback.stop();
+            screen.status("");
+            screen.clearBanner();
+            screen.clearTransition();
+            screen.updateGuide(channels, currentId(), guide::schedule);
+            refreshOptions();
+            emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
+            renderChannels();
+            if (!screen.panelOpen()) screen.showChannels();
+            return;
+        }
+
         boolean initialSelection = current == null;
         long previous = initialSelection ? preferences.getLong("last_channel", -1) : current.id();
         TvListings.Channel previousChannel = findChannel(previous);
-        current = previousChannel == null ? result.get(0) : previousChannel;
+        current = previousChannel == null ? channels.get(0) : previousChannel;
         boolean shouldTune = resumePlayback || initialSelection || current.id() != previous;
         resumePlayback = false;
         if (initialSelection) screen.hidePanels();
         if (shouldTune && playback.requestedChannelId() != current.id()) playback.tune(current.id());
+        renderGuide();
+        refreshOptions();
+    }
+
+    private void reapplyChannels() {
+        if (rawChannels.isEmpty()) return;
+        ChannelManager.Result channelResult = ChannelManager.apply(rawChannels, channelOrder, hiddenChannels);
+        allChannels = channelResult.allSorted();
+        channels = channelResult.visible();
+        guide.setChannels(channels);
+
+        if (channels.isEmpty()) {
+            current = null;
+            playback.stop();
+            screen.status("");
+            screen.clearBanner();
+            screen.clearTransition();
+            screen.updateGuide(channels, currentId(), guide::schedule);
+            refreshOptions();
+            emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
+            renderChannels();
+            return;
+        }
+
+        boolean currentValid = current != null && findChannel(current.id()) != null;
+        if (!currentValid) {
+            long last = preferences.getLong("last_channel", -1);
+            TvListings.Channel lastChan = findChannel(last);
+            current = lastChan != null ? lastChan : channels.get(0);
+            preferences.edit().putLong("last_channel", current.id()).apply();
+            playback.tune(current.id());
+        }
+
+        renderChannels();
         renderGuide();
         refreshOptions();
     }
@@ -739,6 +844,13 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             if (channel.id() == id) return channel;
         }
         return null;
+    }
+
+    private TvListings.Channel findAnyChannel(long id) {
+        for (TvListings.Channel channel : allChannels) {
+            if (channel.id() == id) return channel;
+        }
+        return findChannel(id);
     }
 
     private TvListings.Program nowPlaying(TvListings.Channel channel, long now) {

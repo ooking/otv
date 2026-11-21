@@ -43,7 +43,7 @@ final class TvScreen {
     final TvView video;
 
     private final Activity activity;
-    private final TvStyle style;
+    final TvStyle style;
     private final FrameLayout root;
     private final ChannelSidebar sidebar;
     private final GuideGrid guide;
