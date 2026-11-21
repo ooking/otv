@@ -3,7 +3,9 @@ package com.xiaomitv.dtmb;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
@@ -23,7 +25,7 @@ final class ProgramOverlay extends LinearLayout {
     private final Handler handler;
     private final TvStyle style;
     private final DateFormat time;
-    private final TextView number;
+    private final TextView channelBadge;
     private final TextView title;
     private final TextView metadata;
     private final ProgressBar progress;
@@ -43,58 +45,77 @@ final class ProgramOverlay extends LinearLayout {
         this.style = style;
         time = android.text.format.DateFormat.getTimeFormat(activity);
         setOrientation(HORIZONTAL);
-        setGravity(Gravity.TOP);
-        setPadding(style.dp(25), style.dp(20), style.dp(25), style.dp(20));
-        setBackground(style.glassSurface());
+        setGravity(Gravity.CENTER_VERTICAL);
+        setPadding(style.dp(24), style.dp(16), style.dp(24), style.dp(16));
+        setBackground(topGlassSurface());
         setVisibility(GONE);
 
-        number = style.text(52, TvStyle.TEXT, false);
-        number.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        number.setIncludeFontPadding(false);
-        style.trim(number, 1);
-        LinearLayout.LayoutParams numberParams = new LinearLayout.LayoutParams(-2, -2);
-        numberParams.rightMargin = style.dp(22);
-        number.setMaxWidth(style.dp(108));
-        addView(number, numberParams);
+        // 1. 左侧：台标/频道号高对比度徽章 (图 2 风格)
+        channelBadge = style.text(18, 0xff000000, true);
+        channelBadge.setBackground(style.surface(0xffffffff, 6, Color.TRANSPARENT));
+        channelBadge.setPadding(style.dp(10), style.dp(4), style.dp(10), style.dp(4));
+        channelBadge.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
+        badgeParams.rightMargin = style.dp(16);
+        addView(channelBadge, badgeParams);
 
+        // 2. 中间：节目大标题、副标题与进度条
         LinearLayout body = new LinearLayout(activity);
         body.setOrientation(VERTICAL);
         addView(body, new LinearLayout.LayoutParams(0, -2, 1));
-        title = style.text(30, TvStyle.TEXT, true);
-        style.trim(title, 2);
+
+        title = style.text(24, TvStyle.TEXT, true);
+        style.trim(title, 1);
         body.addView(title);
 
         LinearLayout meta = new LinearLayout(activity);
+        meta.setOrientation(HORIZONTAL);
         meta.setGravity(Gravity.CENTER_VERTICAL);
         meta.setPadding(0, style.dp(4), 0, 0);
         body.addView(meta);
-        metadata = style.text(17, TvStyle.MUTED, true);
+
+        metadata = style.text(14, TvStyle.MUTED, true);
         style.trim(metadata, 1);
-        metadata.setMaxWidth(style.dp(activity.getResources().getConfiguration().screenWidthDp * 0.43f));
         meta.addView(metadata, new LinearLayout.LayoutParams(-2, -2));
+
         progress = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(1000);
-        progress.setProgressTintList(ColorStateList.valueOf(TvStyle.FOCUS));
-        progress.setProgressBackgroundTintList(ColorStateList.valueOf(TvStyle.EDGE));
-        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(style.dp(86), style.dp(5));
+        progress.setProgressTintList(ColorStateList.valueOf(0xff3b82f6)); // 蓝色进度条
+        progress.setProgressBackgroundTintList(ColorStateList.valueOf(0x33ffffff));
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(style.dp(96), style.dp(4));
         progressParams.leftMargin = style.dp(14);
         meta.addView(progress, progressParams);
-        badges = style.text(13, TvStyle.TEXT, true);
-        style.trim(badges, 1);
-        badges.setPadding(style.dp(10), style.dp(4), style.dp(10), style.dp(4));
-        badges.setBackground(style.surface(TvStyle.GAP, 10, TvStyle.EDGE));
-        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
-        badgeParams.leftMargin = style.dp(12);
-        meta.addView(badges, badgeParams);
 
-        synopsis = style.text(18, TvStyle.MUTED, false);
-        synopsis.setPadding(0, style.dp(8), 0, 0);
+        badges = style.text(12, 0xffffffff, true);
+        style.trim(badges, 1);
+        badges.setPadding(style.dp(6), style.dp(2), style.dp(6), style.dp(2));
+        badges.setBackground(style.surface(TvStyle.PILL_DEFAULT, 6, 0x44ffffff));
+        LinearLayout.LayoutParams badgesParam = new LinearLayout.LayoutParams(-2, -2);
+        badgesParam.leftMargin = style.dp(10);
+        meta.addView(badges, badgesParam);
+
+        synopsis = style.text(14, 0xffa0a4b5, false);
+        synopsis.setPadding(0, style.dp(6), 0, 0);
         style.trim(synopsis, 2);
         body.addView(synopsis);
-        footer = style.text(15, TvStyle.TEXT, true);
-        footer.setPadding(0, style.dp(8), 0, 0);
-        style.trim(footer, 2);
+
+        footer = style.text(13, TvStyle.MUTED, true);
+        footer.setPadding(0, style.dp(4), 0, 0);
+        style.trim(footer, 1);
         body.addView(footer);
+    }
+
+    private GradientDrawable topGlassSurface() {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xf5161820, 0xeb101115});
+        drawable.setCornerRadii(new float[]{
+                0, 0,
+                0, 0,
+                style.dp(20), style.dp(20),
+                style.dp(20), style.dp(20)
+        });
+        drawable.setStroke(style.dp(1), 0x33ffffff);
+        return drawable;
     }
 
     void show(Channel channel, Program program, Program next, String labels,
@@ -109,18 +130,24 @@ final class ProgramOverlay extends LinearLayout {
     void update(Channel channel, Program program, Program next, String labels) {
         this.channel = channel;
         this.program = program;
-        number.setText(channel.number());
-        number.setVisibility(channel.number().isEmpty() ? GONE : VISIBLE);
+
+        String numberStr = channel.number().isEmpty()
+                ? String.format(java.util.Locale.getDefault(), "%03d", channel.id() % 1000)
+                : channel.number();
+        channelBadge.setText(numberStr);
+
         title.setText(program == null ? channel.name() : program.title());
-        metadata.setText(program == null ? "暂无当前节目资料"
+        metadata.setText(program == null ? channel.name()
                 : channel.name() + "   " + time.format(new Date(program.start()))
-                        + "–" + time.format(new Date(program.end())));
+                + " ~ " + time.format(new Date(program.end())));
+
         progress.setVisibility(program == null ? GONE : VISIBLE);
         if (program != null) {
             long elapsed = System.currentTimeMillis() - program.start();
             progress.setProgress((int) Math.max(0, Math.min(1000,
                     elapsed * 1000.0 / (program.end() - program.start()))));
         }
+
         badges.setText(labels);
         badges.setVisibility(labels.isEmpty() ? GONE : VISIBLE);
 
@@ -128,9 +155,9 @@ final class ProgramOverlay extends LinearLayout {
         synopsis.setText(description);
         synopsis.setVisibility(description.isEmpty() ? GONE : VISIBLE);
 
-        String nextLabel = next == null ? "" : "接下来  " + next.title();
-        String action = switching ? "正在切换频道…" : description.isEmpty() ? "" : "←  节目介绍";
-        footer.setText(nextLabel.isEmpty() || action.isEmpty() ? action + nextLabel : action + "     " + nextLabel);
+        String nextLabel = next == null ? "" : "随后播出: " + next.title();
+        String action = switching ? "正在调谐频道…" : description.isEmpty() ? "" : "按 [左键] 查看完整详情";
+        footer.setText(nextLabel.isEmpty() || action.isEmpty() ? action + nextLabel : action + "   |   " + nextLabel);
         footer.setVisibility(footer.length() == 0 ? GONE : VISIBLE);
     }
 
@@ -147,13 +174,13 @@ final class ProgramOverlay extends LinearLayout {
         Date end = new Date(program.end());
         String startDay = date.format(start);
         String endDay = date.format(end);
-        String when = startDay + "  " + time.format(start) + "–"
+        String when = startDay + "  " + time.format(start) + " ~ "
                 + (endDay.equals(startDay) ? "" : endDay + "  ") + time.format(end);
         ScrollView scroll = new ScrollView(activity);
         scroll.setFocusable(true);
-        TextView content = style.text(19, TvStyle.TEXT, false);
+        TextView content = style.text(18, TvStyle.TEXT, false);
         int spacing = style.dp(24);
-        content.setPadding(spacing, style.dp(8), spacing, style.dp(14));
+        content.setPadding(spacing, style.dp(12), spacing, style.dp(16));
         String description = program.description();
         content.setText(channel.label() + "\n" + when
                 + (description.isEmpty() ? "" : "\n\n" + description));
@@ -171,6 +198,6 @@ final class ProgramOverlay extends LinearLayout {
 
     private void renewTimeout() {
         handler.removeCallbacks(dismiss);
-        if (temporary && !switching && getVisibility() == VISIBLE) handler.postDelayed(dismiss, 3_000);
+        if (temporary && !switching && getVisibility() == VISIBLE) handler.postDelayed(dismiss, 3_500);
     }
 }

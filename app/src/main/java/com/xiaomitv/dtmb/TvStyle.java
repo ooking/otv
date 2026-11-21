@@ -17,16 +17,21 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 final class TvStyle {
-    static final int GRAPHITE = 0xff18191c;
-    static final int PANEL = 0xee292b30;
-    static final int TILE = 0xff303238;
-    static final int GAP = 0xff202125;
-    static final int EDGE = 0xff464850;
-    static final int TEXT = 0xfff7f7fa;
-    static final int MUTED = 0xffc0c1c9;
-    static final int FOCUS = 0xfff2f2f6;
-    static final int FOCUS_TEXT = 0xff18191c;
-    static final int LIVE = 0xffd4e3ff;
+    // 现代深色电视主题配色
+    static final int BG_DARK = 0xff101115;
+    static final int GRAPHITE = 0xff14151a;
+    static final int PANEL = 0xf01a1c23;
+    static final int TILE = 0xff22242c;
+    static final int TILE_BORDER = 0xff353844;
+    static final int GAP = 0xff17181f;
+    static final int EDGE = 0xff323540;
+    static final int TEXT = 0xfff5f6fa;
+    static final int MUTED = 0xff8c90a0;
+    static final int FOCUS = 0xffffffff;
+    static final int FOCUS_TEXT = 0xff101115;
+    static final int RED_LIVE = 0xffd32f2f;
+    static final int GOLD_GUIDE = 0xfff59e0b;
+    static final int PILL_DEFAULT = 0xff282b35;
 
     private static final int[] FOCUSED = {android.R.attr.state_focused};
     private static final int[] SELECTED = {android.R.attr.state_selected};
@@ -60,7 +65,7 @@ final class TvStyle {
     }
 
     TextView title(String label) {
-        TextView view = text(30, TEXT, true);
+        TextView view = text(26, TEXT, true);
         view.setText(label);
         return view;
     }
@@ -80,9 +85,9 @@ final class TvStyle {
 
     GradientDrawable glassSurface() {
         GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xf2393b42, 0xf226282d});
-        drawable.setCornerRadius(dp(28));
-        drawable.setStroke(dp(1), 0xff50525c);
+                new int[]{0xf520222a, 0xf514151a});
+        drawable.setCornerRadius(dp(20));
+        drawable.setStroke(dp(1), 0xff383b48);
         return drawable;
     }
 
@@ -107,9 +112,13 @@ final class TvStyle {
     }
 
     Button button(String label, Runnable onClick) {
+        return capsuleButton(label, onClick);
+    }
+
+    Button capsuleButton(String label, Runnable onClick) {
         Button button = new Button(context);
         button.setText(label);
-        button.setTextSize(15);
+        button.setTextSize(14);
         button.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         button.setAllCaps(false);
         button.setGravity(Gravity.CENTER);
@@ -117,10 +126,10 @@ final class TvStyle {
         button.setMinimumWidth(0);
         button.setMinHeight(0);
         button.setMinimumHeight(0);
-        button.setPadding(dp(8), 0, dp(8), 0);
+        button.setPadding(dp(14), dp(6), dp(14), dp(6));
         trim(button, 1);
         button.setTextColor(focusText(TEXT));
-        focusSurface(button);
+        capsuleSurface(button);
         button.setOnClickListener(view -> onClick.run());
         return button;
     }
@@ -130,20 +139,32 @@ final class TvStyle {
                 new int[]{MUTED, FOCUS_TEXT, FOCUS_TEXT, restingColor});
     }
 
-    void focusSurface(View view) {
+    void capsuleSurface(View view) {
         StateListDrawable background = new StateListDrawable();
         background.addState(FOCUSED, surface(FOCUS, 18, Color.TRANSPARENT));
         background.addState(SELECTED, surface(FOCUS, 18, Color.TRANSPARENT));
-        background.addState(DEFAULT, surface(0x267a7c88, 18, Color.TRANSPARENT));
+        background.addState(DEFAULT, surface(PILL_DEFAULT, 18, 0x33ffffff));
         view.setBackground(background);
+        attachElevation(view, dp(3));
+    }
 
+    void focusSurface(View view) {
+        StateListDrawable background = new StateListDrawable();
+        background.addState(FOCUSED, surface(FOCUS, 12, Color.TRANSPARENT));
+        background.addState(SELECTED, surface(FOCUS, 12, Color.TRANSPARENT));
+        background.addState(DEFAULT, surface(TILE, 12, TILE_BORDER));
+        view.setBackground(background);
+        attachElevation(view, dp(4));
+    }
+
+    void attachElevation(View view, int height) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
             view.setStateListAnimator(null);
             return;
         }
         StateListAnimator animator = new StateListAnimator();
-        animator.addState(FOCUSED, elevation(view, dp(4)));
-        animator.addState(SELECTED, elevation(view, dp(4)));
+        animator.addState(FOCUSED, elevation(view, height));
+        animator.addState(SELECTED, elevation(view, height));
         animator.addState(DEFAULT, elevation(view, 0));
         view.setStateListAnimator(animator);
     }

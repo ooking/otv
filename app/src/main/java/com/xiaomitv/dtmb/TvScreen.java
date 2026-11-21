@@ -87,7 +87,7 @@ final class TvScreen {
         status.setVisibility(View.GONE);
 
         sidebar = new ChannelSidebar(activity, style, actions);
-        root.addView(sidebar.view, inset(new FrameLayout.LayoutParams(panelWidth(0.34f, 520), -1, Gravity.START)));
+        root.addView(sidebar.view, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         sidebar.view.setVisibility(View.GONE);
 
         guide = new GuideGrid(activity, style, actions);
@@ -129,9 +129,9 @@ final class TvScreen {
         if (push(Layer.CHANNELS)) {
             sidebar.focusInitial(onlyFavorites);
             if (ValueAnimator.areAnimatorsEnabled()) {
-                sidebar.view.setTranslationX(-style.dp(16));
+                sidebar.view.setTranslationY(style.dp(24));
                 sidebar.view.setAlpha(0f);
-                sidebar.view.animate().translationX(0f).alpha(1f).setDuration(180)
+                sidebar.view.animate().translationY(0f).alpha(1f).setDuration(180)
                         .withEndAction(() -> root.requestTransparentRegion(sidebar.view))
                         .start();
             }
@@ -298,7 +298,7 @@ final class TvScreen {
         if (layer == Layer.CHANNELS) {
             view.animate().cancel();
             view.setAlpha(1f);
-            view.setTranslationX(0f);
+            view.setTranslationY(0f);
         }
         view.setVisibility(View.GONE);
     }
