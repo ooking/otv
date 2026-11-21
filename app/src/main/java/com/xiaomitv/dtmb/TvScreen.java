@@ -2,8 +2,8 @@ package com.xiaomitv.dtmb;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.media.tv.TvView;
 import android.os.Handler;
 import android.view.Gravity;
@@ -20,10 +20,8 @@ import android.widget.TextView;
 import com.xiaomitv.dtmb.TvListings.Channel;
 import com.xiaomitv.dtmb.TvListings.Program;
 
-import java.text.DateFormat;
 import java.util.ArrayDeque;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +43,6 @@ final class TvScreen {
     final TvView video;
 
     private final Activity activity;
-    private final Handler handler;
     private final TvStyle style;
     private final FrameLayout root;
     private final ChannelSidebar sidebar;
@@ -53,15 +50,10 @@ final class TvScreen {
     private final LinearLayout options;
     private final ListView optionsList;
     private final OptionsAdapter optionRows = new OptionsAdapter();
-    private final LinearLayout banner;
-    private final TextView bannerTitle;
-    private final TextView nowLine;
-    private final TextView nextLine;
+    private final View transition;
+    private final ProgramOverlay banner;
     private final TextView status;
-    private final Runnable hideBanner;
     private final Deque<Layer> history = new ArrayDeque<>();
-    private final DateFormat time;
-    private final DateFormat dateTime;
     private List<Option> optionItems = Collections.emptyList();
     private View sidebarFocus;
     private int optionSelection;
@@ -69,10 +61,7 @@ final class TvScreen {
 
     TvScreen(Activity activity, Handler handler, Actions actions) {
         this.activity = activity;
-        this.handler = handler;
         style = new TvStyle(activity);
-        time = android.text.format.DateFormat.getTimeFormat(activity);
-        dateTime = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
         root = new FrameLayout(activity);
         root.setBackgroundColor(Color.BLACK);
         root.setFocusableInTouchMode(true);
@@ -81,23 +70,20 @@ final class TvScreen {
         video.setFocusable(false);
         root.addView(video, new FrameLayout.LayoutParams(-1, -1));
 
-        banner = style.panel(20, 13);
-        bannerTitle = style.title("");
-        style.trim(bannerTitle, 1);
-        banner.addView(bannerTitle);
-        nowLine = bannerLine();
-        nextLine = bannerLine();
-        FrameLayout.LayoutParams bannerParams = inset(
-                new FrameLayout.LayoutParams(panelWidth(0.55f, 650), -2, Gravity.BOTTOM | Gravity.START));
-        root.addView(banner, bannerParams);
-        hideBanner = () -> banner.setVisibility(View.GONE);
-        hideBanner.run();
+        transition = new View(activity);
+        transition.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        transition.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xff30343c, TvStyle.GRAPHITE}));
+        transition.setVisibility(View.GONE);
+        root.addView(transition, new FrameLayout.LayoutParams(-1, -1));
 
+        banner = new ProgramOverlay(activity, handler, style);
+        root.addView(banner, inset(new FrameLayout.LayoutParams(-1, -2, Gravity.TOP)));
         status = style.text(17, TvStyle.TEXT, true);
         status.setPadding(style.dp(16), style.dp(9), style.dp(16), style.dp(9));
         status.setGravity(Gravity.CENTER);
         status.setBackground(style.surface(TvStyle.PANEL, 14, TvStyle.EDGE));
-        root.addView(status, inset(new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.CENTER_HORIZONTAL)));
+        root.addView(status, inset(new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL)));
         status.setVisibility(View.GONE);
 
         sidebar = new ChannelSidebar(activity, style, actions);
@@ -190,7 +176,11 @@ final class TvScreen {
     }
 
     boolean back() {
-        if (history.isEmpty()) return false;
+        if (history.isEmpty()) {
+            if (!hasProgramOverlay()) return false;
+            clearBanner();
+            return true;
+        }
         hide(history.pop());
         restoreTop();
         return true;
@@ -203,31 +193,50 @@ final class TvScreen {
         root.requestFocus();
     }
 
-    void channelBanner(Channel channel, Program now, Program next) {
-        if (panelOpen()) return;
-        bannerTitle.setText(channel.label());
-        setBannerPrograms(now, next);
-        banner.setVisibility(View.VISIBLE);
-        handler.removeCallbacks(hideBanner);
-        handler.postDelayed(hideBanner, 3_000);
+    void showProgram(Channel channel, Program now, Program next, String badges,
+                     boolean temporary, boolean switching) {
+        if (!panelOpen()) banner.show(channel, now, next, badges, temporary, switching);
     }
 
-    void updateBanner(Program now, Program next) {
-        if (banner.getVisibility() == View.VISIBLE) setBannerPrograms(now, next);
+    void updateBanner(Channel channel, Program now, Program next, String badges) {
+        if (hasProgramOverlay()) banner.update(channel, now, next, badges);
+    }
+
+    boolean hasProgramOverlay() {
+        return banner.getVisibility() == View.VISIBLE;
+    }
+
+    void openProgramDescription() {
+        banner.openDetails();
     }
 
     void clearBanner() {
-        handler.removeCallbacks(hideBanner);
-        hideBanner.run();
+        banner.close();
+    }
+
+    void beginTransition() {
+        transition.animate().cancel();
+        transition.setAlpha(1f);
+        transition.setVisibility(View.VISIBLE);
+    }
+
+    void revealVideo() {
+        if (transition.getVisibility() != View.VISIBLE) return;
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            clearTransition();
+            return;
+        }
+        transition.animate().alpha(0f).setDuration(220)
+                .withEndAction(() -> transition.setVisibility(View.GONE)).start();
+    }
+
+    void clearTransition() {
+        transition.animate().cancel();
+        transition.setVisibility(View.GONE);
     }
 
     void programDetails(Channel channel, Program program) {
-        String when = dateTime.format(new Date(program.start())) + " – " + dateTime.format(new Date(program.end()));
-        new AlertDialog.Builder(activity)
-                .setTitle(program.title())
-                .setMessage(channel.label() + "\n" + when)
-                .setPositiveButton("返回", null)
-                .show();
+        banner.showDetails(channel, program);
     }
 
     void status(String message) {
@@ -237,6 +246,7 @@ final class TvScreen {
 
     void finish() {
         clearBanner();
+        clearTransition();
         sidebar.view.animate().cancel();
     }
 
@@ -296,23 +306,6 @@ final class TvScreen {
     private void focusOptions() {
         optionsList.requestFocus();
         optionsList.setSelection(Math.max(0, Math.min(optionSelection, optionItems.size() - 1)));
-    }
-
-    private TextView bannerLine() {
-        TextView line = style.text(17, TvStyle.MUTED, false);
-        style.trim(line, 1);
-        banner.addView(line);
-        return line;
-    }
-
-    private void setBannerPrograms(Program now, Program next) {
-        nowLine.setText(now == null ? "正在播  暂无节目资料" : programLine("正在播", now));
-        nextLine.setText(next == null ? "接下来  暂无节目资料" : programLine("接下来", next));
-    }
-
-    private String programLine(String label, Program program) {
-        return label + "  " + time.format(new Date(program.start())) + "–" + time.format(new Date(program.end()))
-                + "  " + program.title();
     }
 
     private int panelWidth(float fraction, int maxWidthDp) {

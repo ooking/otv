@@ -35,7 +35,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class MainActivity extends Activity implements TvScreen.Actions {
+public final class MainActivity extends Activity implements TvScreen.Actions, Playback.Listener {
     private static final String TAG = "DtmbListings";
     private static final int LISTINGS_REQUEST = 1;
     private static final int XMLTV_REQUEST = 2;
@@ -94,7 +94,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
         screen = new TvScreen(this, handler, this);
         guide = new ProgramGuide(this, listings, handler, this::renderGuide);
         playback = new Playback(screen.video, getSystemService(AudioManager.class), preferences, handler,
-                screen::status);
+                this);
         playback.setXiaomiAudioEnabled(preferences.getBoolean("xiaomi_audio", false));
     }
 
@@ -121,6 +121,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
         handler.removeCallbacks(refreshChannels);
         guide.stop();
         screen.clearBanner();
+        screen.clearTransition();
         cancelChannelQuery();
         if (observing) {
             getContentResolver().unregisterContentObserver(channelObserver);
@@ -188,7 +189,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
                 return true;
             }
             case KeyEvent.KEYCODE_INFO -> {
-                if (firstPress && !screen.panelOpen() && current != null) showChannelBanner();
+                if (firstPress && !screen.panelOpen()) showProgramInfo();
                 return true;
             }
             default -> { }
@@ -211,7 +212,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
                     return true;
                 }
                 case KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (released) options();
+                    if (released) showProgramInfo();
                     return true;
                 }
                 default -> { }
@@ -228,12 +229,57 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
     @Override
     public void select(TvListings.Channel channel) {
         if (!active) return;
-        current = channel;
-        preferences.edit().putLong("last_channel", channel.id()).apply();
         screen.hidePanels();
-        if (playback.channelId() != channel.id()) playback.tune(channel.id());
+        if (playback.requestedChannelId() == -1 && playback.isReady(channel.id())) {
+            showProgram(channel, true, false);
+        } else {
+            playback.tune(channel.id());
+        }
+    }
+
+    @Override
+    public void onStatus(String status) {
+        screen.status(status);
+    }
+
+    @Override
+    public void onTuning(long id, boolean switching) {
+        if (switching) screen.beginTransition();
+        TvListings.Channel target = findChannel(id);
+        if (target != null) showProgram(target, true, true);
+    }
+
+    @Override
+    public void onTuneReady(long id, String notice) {
+        if (!active) return;
+        TvListings.Channel ready = findChannel(id);
+        if (ready == null) {
+            if (current != null && current.id() != id) playback.tune(current.id());
+            return;
+        }
+        current = ready;
+        if (!notice.isEmpty()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
+        preferences.edit().putLong("last_channel", id).apply();
         guide.requestRefresh(5_000);
-        showChannelBanner();
+        screen.revealVideo();
+        showProgram(ready, true, false);
+        renderGuide();
+        refreshOptions();
+    }
+
+    @Override
+    public void onTuneFailed() {
+        screen.clearBanner();
+    }
+
+    private void showProgramInfo() {
+        if (screen.hasProgramOverlay()) {
+            screen.openProgramDescription();
+        } else if (current != null) {
+            showProgram(current, false, false);
+        } else {
+            openChannels();
+        }
     }
 
     @Override
@@ -307,9 +353,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
     private void retune() {
         if (current == null || !active) return;
         screen.hidePanels();
-        playback.stop();
         playback.tune(current.id());
-        showChannelBanner();
     }
 
     private void showSubtitleTracks() {
@@ -566,6 +610,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
             playback.stop();
             screen.status("");
             screen.clearBanner();
+            screen.clearTransition();
             screen.updateGuide(channels, currentId(), guide::schedule);
             refreshOptions();
             renderChannels();
@@ -575,22 +620,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
 
         boolean initialSelection = current == null;
         long previous = initialSelection ? preferences.getLong("last_channel", -1) : current.id();
-        current = result.get(0);
-        for (TvListings.Channel channel : result) {
-            if (channel.id() == previous) {
-                current = channel;
-                break;
-            }
-        }
+        TvListings.Channel previousChannel = findChannel(previous);
+        current = previousChannel == null ? result.get(0) : previousChannel;
         boolean shouldTune = resumePlayback || initialSelection || current.id() != previous;
         resumePlayback = false;
         if (initialSelection) screen.hidePanels();
-        if (shouldTune) {
-            preferences.edit().putLong("last_channel", current.id()).apply();
-            playback.tune(current.id());
-            guide.requestRefresh(5_000);
-            showChannelBanner();
-        }
+        if (shouldTune && playback.requestedChannelId() != current.id()) playback.tune(current.id());
         renderGuide();
         refreshOptions();
     }
@@ -599,15 +634,27 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
         if (!active) return;
         renderChannels();
         if (screen.guideOpen()) screen.updateGuide(channels, currentId(), guide::schedule);
-        if (current != null) {
-            long now = System.currentTimeMillis();
-            screen.updateBanner(nowPlaying(current, now), nextProgram(current, now));
+        if (screen.hasProgramOverlay()) {
+            TvListings.Channel channel = findChannel(playback.channelId());
+            if (channel != null) {
+                long now = System.currentTimeMillis();
+                screen.updateBanner(channel, nowPlaying(channel, now), nextProgram(channel, now),
+                        playback.programBadges(channel.id()));
+            }
         }
     }
 
-    private void showChannelBanner() {
+    private void showProgram(TvListings.Channel channel, boolean temporary, boolean switching) {
         long now = System.currentTimeMillis();
-        screen.channelBanner(current, nowPlaying(current, now), nextProgram(current, now));
+        screen.showProgram(channel, nowPlaying(channel, now), nextProgram(channel, now),
+                playback.programBadges(channel.id()), temporary, switching);
+    }
+
+    private TvListings.Channel findChannel(long id) {
+        for (TvListings.Channel channel : channels) {
+            if (channel.id() == id) return channel;
+        }
+        return null;
     }
 
     private TvListings.Program nowPlaying(TvListings.Channel channel, long now) {
@@ -639,10 +686,6 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
         return result;
     }
 
-    private int currentIndex(List<TvListings.Channel> values) {
-        return current == null ? -1 : values.indexOf(current);
-    }
-
     private void openChannels() {
         renderChannels();
         screen.showChannels();
@@ -662,7 +705,9 @@ public final class MainActivity extends Activity implements TvScreen.Actions {
             openChannels();
             return;
         }
-        int index = currentIndex(visible);
+        long pending = playback.requestedChannelId();
+        TvListings.Channel base = pending == -1 ? current : findChannel(pending);
+        int index = base == null ? -1 : visible.indexOf(base);
         int next = index < 0 ? (direction > 0 ? 0 : visible.size() - 1)
                 : (index + direction + visible.size()) % visible.size();
         select(visible.get(next));

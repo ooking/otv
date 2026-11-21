@@ -19,6 +19,9 @@ final class Playback {
 
     interface Listener {
         void onStatus(String status);
+        void onTuning(long channel, boolean switching);
+        void onTuneReady(long channel, String notice);
+        void onTuneFailed();
     }
 
     private final TvView view;
@@ -37,6 +40,13 @@ final class Playback {
     private int focusGeneration;
     private boolean focused;
     private boolean videoAvailable;
+    private boolean audioOnly;
+    private boolean tuning;
+    private boolean submitted;
+    private int tuneGeneration;
+    private long lastReadyChannel = -1;
+    private long queuedChannel = -1;
+    private String recoveryMessage = "";
     private boolean contentBlocked;
     private long channelId = -1;
     private int audioTrackCount;
@@ -54,19 +64,24 @@ final class Playback {
         view.setCallback(new TvView.TvInputCallback() {
             @Override
             public void onVideoAvailable(String inputId) {
-                if (!isActive(inputId)) return;
-                handler.removeCallbacks(tuneTimeout);
+                if (!isActive(inputId) || (tuning && !submitted)) return;
                 videoAvailable = true;
-                setState(contentBlocked ? "此频道受系统家长控制限制" : "画面已就绪",
-                        contentBlocked ? "此频道受系统家长控制限制" : "");
-                applyVolume("video_available");
-                restoreSubtitles();
+                audioOnly = false;
+                if (contentBlocked) return;
+                if (tuning) {
+                    completeTune("");
+                } else {
+                    setState("画面已就绪", "");
+                    applyVolume("video_available");
+                    restoreSubtitles();
+                }
             }
 
             @Override
             public void onVideoUnavailable(String inputId, int reason) {
-                if (!isActive(inputId)) return;
+                if (!isActive(inputId) || contentBlocked || (tuning && !submitted)) return;
                 videoAvailable = false;
+                audioOnly = reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY;
                 String message = switch (reason) {
                     case TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING -> "正在切换频道…";
                     case TvInputManager.VIDEO_UNAVAILABLE_REASON_WEAK_SIGNAL -> "DTMB 信号较弱";
@@ -76,9 +91,15 @@ final class Playback {
                             "调谐器资源不足，请关闭其他直播应用后重试";
                     default -> "暂时没有画面";
                 };
-                setState(message, message);
-                xiaomiAudio.sync(false, false);
                 Log.i(TAG, "video_unavailable channel=" + channelId + " reason=" + reason);
+                if (tuning && audioOnly) {
+                    completeTune(message);
+                } else if (tuning && reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_INSUFFICIENT_RESOURCE) {
+                    failTune(message);
+                } else {
+                    setState(message, tuning ? "" : message);
+                    syncXiaomiAudio(false);
+                }
             }
 
             @Override
@@ -93,11 +114,19 @@ final class Playback {
 
             @Override
             public void onContentBlocked(String inputId, android.media.tv.TvContentRating rating) {
-                if (!isActive(inputId)) return;
-                handler.removeCallbacks(tuneTimeout);
+                if (!isActive(inputId) || (tuning && !submitted)) return;
                 contentBlocked = true;
-                setState("此频道受系统家长控制限制", "此频道受系统家长控制限制");
-                applyVolume("content_blocked");
+                String message = "此频道受系统家长控制限制";
+                if (tuning && lastReadyChannel != -1 && lastReadyChannel != channelId) {
+                    failTune(message);
+                } else {
+                    boolean wasTuning = tuning;
+                    finishRequest();
+                    queuedChannel = -1;
+                    setState(message, message);
+                    applyVolume("content_blocked");
+                    if (wasTuning) listener.onTuneFailed();
+                }
             }
 
             @Override
@@ -108,6 +137,10 @@ final class Playback {
                 setState(videoAvailable ? "画面已就绪" : message, videoAvailable ? "" : message);
                 applyVolume("content_allowed");
                 restoreSubtitles();
+                if (videoAvailable) {
+                    lastReadyChannel = channelId;
+                    listener.onTuneReady(channelId, "");
+                }
             }
 
             @Override
@@ -140,6 +173,19 @@ final class Playback {
         return channelId;
     }
 
+    String programBadges(long expectedChannel) {
+        if (channelId != expectedChannel || !isReady(expectedChannel)) return "";
+        String subtitles = subtitleTracks().isEmpty() ? "" : "CC";
+        List<TvTrackInfo> video = tracks(TvTrackInfo.TYPE_VIDEO);
+        String selected = view.getSelectedTrack(TvTrackInfo.TYPE_VIDEO);
+        for (TvTrackInfo track : video) {
+            if (!track.getId().equals(selected) && video.size() != 1) continue;
+            int height = track.getVideoHeight();
+            if (height > 0) return (subtitles.isEmpty() ? "" : subtitles + "   ") + height + " 线";
+        }
+        return subtitles;
+    }
+
     List<TvTrackInfo> audioTracks() {
         return tracks(TvTrackInfo.TYPE_AUDIO);
     }
@@ -157,7 +203,7 @@ final class Playback {
     }
 
     private List<TvTrackInfo> tracks(int type) {
-        if (channelId == -1 || !videoAvailable || contentBlocked) return Collections.emptyList();
+        if (channelId == -1 || (!videoAvailable && !audioOnly) || contentBlocked) return Collections.emptyList();
         List<TvTrackInfo> tracks = view.getTracks(type);
         return tracks == null ? Collections.emptyList() : tracks;
     }
@@ -188,29 +234,105 @@ final class Playback {
         return false;
     }
 
+    long requestedChannelId() {
+        return queuedChannel != -1 ? queuedChannel : tuning ? channelId : -1;
+    }
+
+    boolean isReady(long id) {
+        return channelId == id && !tuning && !contentBlocked && (videoAvailable || audioOnly);
+    }
+
     void tune(long id) {
+        if (tuning) {
+            queuedChannel = id;
+        } else {
+            recoveryMessage = "";
+            startTune(id);
+        }
+    }
+
+    private void startTune(long id) {
+        int generation = ++tuneGeneration;
         channelId = id;
+        tuning = true;
+        submitted = false;
         subtitles.reset(id);
         videoAvailable = false;
+        audioOnly = false;
         xiaomiAudio.sync(false, false);
         contentBlocked = false;
         audioTrackCount = 0;
-        setState("正在切换频道…", "正在切换频道…");
+        boolean switching = lastReadyChannel != -1;
+        setState("正在切换频道…", switching ? "" : "正在连接直播信号…");
+        listener.onTuning(id, switching);
+
+        // Give the window a frame to draw the transition before the tuner can clear its surface.
+        view.postOnAnimation(() -> handler.post(() -> {
+            if (tuneGeneration != generation || !tuning) return;
+            if (focusRequest == null) requestFocus();
+            submitted = true;
+            Log.i(TAG, "tune channel=" + id + " input=" + TvListings.INPUT_ID);
+            try {
+                view.setStreamVolume(0.0f);
+                view.tune(TvListings.INPUT_ID, TvContract.buildChannelUri(id));
+                handler.postDelayed(tuneTimeout, switching ? 6_000 : 15_000);
+            } catch (SecurityException | IllegalArgumentException | IllegalStateException exception) {
+                Log.w(TAG, "tune rejected", exception);
+                failTune("系统拒绝调谐，请检查频道和输入源");
+            }
+        }));
+    }
+
+    private void completeTune(String status) {
+        finishRequest();
+        lastReadyChannel = channelId;
+        long next = queuedChannel;
+        queuedChannel = -1;
+        long ready = channelId;
+        String notice = recoveryMessage;
+        recoveryMessage = "";
+        setState(videoAvailable ? "画面已就绪" : status, status);
+        applyVolume(videoAvailable ? "video_available" : "audio_only");
+        restoreSubtitles();
+        listener.onTuneReady(ready, notice);
+        if (!tuning && next != -1 && next != ready) startTune(next);
+    }
+
+    private void finishRequest() {
+        tuning = false;
+        submitted = false;
         handler.removeCallbacks(tuneTimeout);
-        if (focusRequest == null) requestFocus();
-        Log.i(TAG, "tune channel=" + id + " input=" + TvListings.INPUT_ID);
-        try {
-            view.tune(TvListings.INPUT_ID, TvContract.buildChannelUri(id));
-            applyVolume("tune");
-            handler.postDelayed(tuneTimeout, 15_000);
-        } catch (SecurityException | IllegalArgumentException exception) {
-            Log.w(TAG, "tune rejected", exception);
-            onSessionLost(TvListings.INPUT_ID, "系统拒绝调谐，请检查频道和输入源");
+    }
+
+    private void failTune(String message) {
+        long attempted = channelId;
+        long previous = lastReadyChannel;
+        long next = queuedChannel;
+        queuedChannel = -1;
+        finishRequest();
+        videoAvailable = false;
+        audioOnly = false;
+        xiaomiAudio.sync(false, false);
+        view.reset();
+        if (next != -1 && next != attempted) {
+            recoveryMessage = "";
+            startTune(next);
+        } else if (previous != -1 && previous != attempted) {
+            recoveryMessage = "换台失败，已返回上一频道";
+            startTune(previous);
+        } else {
+            stop();
+            setState(message, message);
+            listener.onTuneFailed();
         }
     }
 
     void stop() {
-        handler.removeCallbacks(tuneTimeout);
+        ++tuneGeneration;
+        finishRequest();
+        lastReadyChannel = -1;
+        queuedChannel = -1;
+        recoveryMessage = "";
         if (channelId != -1) {
             focused = false;
             applyVolume("stop");
@@ -219,6 +341,8 @@ final class Playback {
             view.reset();
         }
         releaseFocus();
+        videoAvailable = false;
+        audioOnly = false;
         audioTrackCount = 0;
         state = "未播放";
     }
@@ -256,15 +380,17 @@ final class Playback {
     }
 
     private void onTuneTimeout() {
-        if (channelId != -1 && !videoAvailable && !contentBlocked && "正在切换频道…".equals(state)) {
-            setState("调谐超时", "调谐超时，可从菜单重新调谐");
-        }
+        if (tuning) failTune("调谐超时，可从菜单重新调谐");
     }
 
     private void onSessionLost(String inputId, String message) {
         if (!isActive(inputId)) return;
-        stop();
-        setState(message, message);
+        if (tuning && submitted) {
+            failTune(message);
+        } else if (!tuning) {
+            stop();
+            setState(message, message);
+        }
     }
 
     private void requestFocus() {
@@ -311,7 +437,7 @@ final class Playback {
     }
 
     private float volume() {
-        return focused && !contentBlocked ? 1.0f : 0.0f;
+        return focused && !tuning && !contentBlocked ? 1.0f : 0.0f;
     }
 
     private void applyVolume(String event) {
@@ -322,7 +448,7 @@ final class Playback {
     }
 
     private void syncXiaomiAudio(boolean retry) {
-        xiaomiAudio.sync(channelId != -1 && videoAvailable && focused && !contentBlocked, retry);
+        xiaomiAudio.sync(channelId != -1 && (videoAvailable || audioOnly) && !tuning && focused && !contentBlocked, retry);
     }
 
     private void setState(String state, String overlay) {

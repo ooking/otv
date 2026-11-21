@@ -27,18 +27,22 @@ final class GuideCache extends SQLiteOpenHelper {
             .thenComparingLong(Program::end).thenComparing(Program::title);
 
     GuideCache(Context context) {
-        super(context, "programs.db", null, 1);
+        super(context, "programs.db", null, 2);
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE guide (channel TEXT NOT NULL, source INTEGER NOT NULL,"
-                + " starts_at INTEGER NOT NULL, ends_at INTEGER NOT NULL, title TEXT NOT NULL,"
+                + " starts_at INTEGER NOT NULL, ends_at INTEGER NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',"
                 + " PRIMARY KEY (channel, source, starts_at))");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion == 1 && newVersion == 2) {
+            db.execSQL("ALTER TABLE guide ADD COLUMN description TEXT NOT NULL DEFAULT ''");
+            return;
+        }
         throw new IllegalStateException("Unsupported guide schema upgrade");
     }
 
@@ -72,6 +76,7 @@ final class GuideCache extends SQLiteOpenHelper {
                     row.put("starts_at", program.start());
                     row.put("ends_at", program.end());
                     row.put("title", program.title());
+                    row.put("description", program.description());
                     db.insertOrThrow("guide", null, row);
                 }
             }
@@ -83,13 +88,13 @@ final class GuideCache extends SQLiteOpenHelper {
 
     private Map<String, List<Program>> readSource(SQLiteDatabase db, int source, long now) {
         Map<String, List<Program>> result = new HashMap<>();
-        try (Cursor rows = db.query("guide", new String[]{"channel", "starts_at", "ends_at", "title"},
+        try (Cursor rows = db.query("guide", new String[]{"channel", "starts_at", "ends_at", "title", "description"},
                 "source=? AND ends_at>? AND starts_at<?",
                 new String[]{Integer.toString(source), Long.toString(now),
                         Long.toString(now + WINDOW)}, null, null, "channel, starts_at")) {
             while (rows.moveToNext()) {
                 result.computeIfAbsent(rows.getString(0), ignored -> new ArrayList<>())
-                        .add(new Program(rows.getString(3), rows.getLong(1), rows.getLong(2)));
+                        .add(new Program(rows.getString(3), rows.getLong(1), rows.getLong(2), rows.getString(4)));
             }
         }
         return result;
@@ -103,7 +108,8 @@ final class GuideCache extends SQLiteOpenHelper {
         }
         List<Program> sorted = new ArrayList<>(fresh);
         sorted.sort(BY_START);
-        for (Program program : sorted) {
+        for (Program incoming : sorted) {
+            Program program = incoming.withDescriptionFrom(slots.get(incoming.start()));
             Map.Entry<Long, Program> previous = slots.floorEntry(program.start());
             if (previous != null && previous.getValue().end() > program.start()) {
                 slots.remove(previous.getKey());

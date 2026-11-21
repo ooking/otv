@@ -88,9 +88,20 @@ final class GuideGrid extends LinearLayout {
                         15, TvStyle.MUTED);
                 for (int tick = 0; tick < 4; tick++) {
                     float x = timeX(windowStart + tick * TICK, getWidth());
-                    drawText(canvas, formatTime(windowStart + tick * TICK), x + style.dp(7),
-                            baseline(getHeight()), (getWidth() - channelWidth) / 4f,
-                            15, TvStyle.MUTED);
+                    long time = windowStart + tick * TICK;
+                    String label = formatTime(time);
+                    boolean currentTick = time <= now && now < time + TICK;
+                    float availableWidth = (getWidth() - channelWidth) / 4f;
+                    if (currentTick) {
+                        text.setTextSize(15 * getResources().getDisplayMetrics().scaledDensity);
+                        float width = Math.min(availableWidth, text.measureText(label) + style.dp(20));
+                        paint.setColor(TvStyle.FOCUS);
+                        canvas.drawRoundRect(x, style.dp(3), x + width, getHeight() - style.dp(3),
+                                style.dp(14), style.dp(14), paint);
+                    }
+                    drawText(canvas, label, x + style.dp(currentTick ? 10 : 7),
+                            baseline(getHeight()), availableWidth - style.dp(10),
+                            15, currentTick ? TvStyle.FOCUS_TEXT : TvStyle.MUTED);
                 }
             }
         };
@@ -272,16 +283,6 @@ final class GuideGrid extends LinearLayout {
         return height / 2f + style.dp(6);
     }
 
-    @Override
-    protected void dispatchDraw(Canvas canvas) {
-        super.dispatchDraw(canvas);
-        if (now >= windowStart && now < windowStart + WINDOW && !channels.isEmpty()) {
-            float x = rows.getLeft() + timeX(now, rows.getWidth());
-            paint.setColor(TvStyle.LIVE);
-            canvas.drawRect(x, scale.getBottom() - style.dp(4), x + style.dp(2), rows.getBottom(), paint);
-        }
-    }
-
     private void drawText(Canvas canvas, String label, float left, float baseline,
                           float width, int size, int color) {
         if (width <= 0) return;
@@ -350,14 +351,9 @@ final class GuideGrid extends LinearLayout {
             float bottom = getHeight() - top;
             float radius = style.dp(8);
 
-            paint.setColor(focused ? TvStyle.LIVE : TvStyle.EDGE);
-            canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
-            int border = style.dp(focused ? 2 : 1);
-            if (right - left <= 2 * border) return;
             paint.setColor(focused ? TvStyle.FOCUS
-                    : slot.program() == null ? TvStyle.GRAPHITE : TvStyle.TILE);
-            canvas.drawRoundRect(left + border, top + border, right - border, bottom - border,
-                    radius - border, radius - border, paint);
+                    : slot.program() == null ? TvStyle.GAP : TvStyle.TILE);
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
             float padding = style.dp(9);
             drawText(canvas, slot.program() == null ? NO_PROGRAM : slot.program().title(), left + padding,
                     baseline(getHeight()), right - left - 2 * padding, 16,

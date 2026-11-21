@@ -40,7 +40,23 @@ final class TvListings {
         }
     }
 
-    record Program(String title, long start, long end) {}
+    record Program(String title, long start, long end, String description) {
+        Program {
+            description = description == null ? "" : description.trim();
+            if (description.length() > 4_000) {
+                description = description.substring(0, description.offsetByCodePoints(0,
+                        Math.min(3_999, description.codePointCount(0, description.length())))) + "…";
+            }
+        }
+
+        Program withDescriptionFrom(Program other) {
+            if (!description.isEmpty() || other == null || other.description.isEmpty()
+                    || start != other.start || end != other.end || !title.equalsIgnoreCase(other.title)) {
+                return this;
+            }
+            return new Program(title, start, end, other.description);
+        }
+    }
 
     private final ContentResolver resolver;
 
@@ -84,7 +100,8 @@ final class TvListings {
         Map<String, List<Program>> programs = new HashMap<>();
         String[] columns = {Programs.COLUMN_CHANNEL_ID, Programs.COLUMN_TITLE,
                 Programs.COLUMN_START_TIME_UTC_MILLIS,
-                Programs.COLUMN_END_TIME_UTC_MILLIS};
+                Programs.COLUMN_END_TIME_UTC_MILLIS, Programs.COLUMN_SHORT_DESCRIPTION,
+                Programs.COLUMN_LONG_DESCRIPTION};
         try (Cursor cursor = resolver.query(Programs.CONTENT_URI, columns, null, null, null, signal)) {
             if (cursor == null) throw new IllegalStateException("TV provider unavailable");
             while (cursor.moveToNext()) {
@@ -97,7 +114,8 @@ final class TvListings {
                 if (title != null && !title.trim().isEmpty()
                         && start < until && end > now && end > start) {
                     programs.computeIfAbsent(key, ignored -> new ArrayList<>())
-                            .add(new Program(title.trim(), start, end));
+                            .add(new Program(title.trim(), start, end,
+                                    value(cursor.getString(5), cursor.getString(4))));
                 }
             }
         }

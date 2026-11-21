@@ -104,13 +104,13 @@ final class XmlTvImporter {
                         long end = time(parser.getAttributeValue(null, "stop"));
                         if (start == Long.MIN_VALUE || start >= now + GuideCache.WINDOW
                                 || end <= now || end <= start) continue;
-                        String title = readTitle(parser);
-                        if (title.isEmpty()) continue;
+                        Program program = readProgram(parser, start, end);
+                        if (program.title().isEmpty()) continue;
                         if (++matchedPrograms > MAX_MATCHED_PROGRAMS) {
                             throw new IOException("Too many matched XMLTV programmes");
                         }
                         result.computeIfAbsent(key, ignored -> new ArrayList<>())
-                                .add(new Program(title, start, end));
+                                .add(program);
                     }
                 }
             }
@@ -133,17 +133,22 @@ final class XmlTvImporter {
         return keys.size() == 1 ? keys.iterator().next() : null;
     }
 
-    private static String readTitle(XmlPullParser parser) throws IOException, XmlPullParserException {
+    private static Program readProgram(XmlPullParser parser, long start, long end)
+            throws IOException, XmlPullParserException {
         int depth = parser.getDepth();
+        String title = "";
+        String description = "";
         while (parser.next() != XmlPullParser.END_DOCUMENT) {
             if (parser.getEventType() == XmlPullParser.END_TAG && parser.getDepth() == depth) break;
-            if (parser.getEventType() == XmlPullParser.START_TAG && parser.getDepth() == depth + 1
-                    && "title".equals(parser.getName())) {
-                String title = parser.nextText().trim();
-                if (!title.isEmpty()) return title.substring(0, Math.min(title.length(), 300));
+            if (parser.getEventType() != XmlPullParser.START_TAG || parser.getDepth() != depth + 1) continue;
+            if (title.isEmpty() && "title".equals(parser.getName())) {
+                String value = parser.nextText().trim();
+                title = value.substring(0, Math.min(value.length(), 300));
+            } else if (description.isEmpty() && "desc".equals(parser.getName())) {
+                description = parser.nextText();
             }
         }
-        return "";
+        return new Program(title, start, end, description);
     }
 
     private static long time(String value) {

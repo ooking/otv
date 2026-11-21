@@ -17,15 +17,16 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 final class TvStyle {
-    static final int GRAPHITE = 0xff191a1e;
-    static final int PANEL = 0xf0222328;
-    static final int TILE = 0xff2b2d33;
-    static final int EDGE = 0xff484a51;
+    static final int GRAPHITE = 0xff18191c;
+    static final int PANEL = 0xee292b30;
+    static final int TILE = 0xff303238;
+    static final int GAP = 0xff202125;
+    static final int EDGE = 0xff464850;
     static final int TEXT = 0xfff7f7fa;
     static final int MUTED = 0xffc0c1c9;
     static final int FOCUS = 0xfff2f2f6;
-    static final int FOCUS_TEXT = 0xff191a1e;
-    static final int LIVE = 0xffb5d2ff;
+    static final int FOCUS_TEXT = 0xff18191c;
+    static final int LIVE = 0xffd4e3ff;
 
     private static final int[] FOCUSED = {android.R.attr.state_focused};
     private static final int[] SELECTED = {android.R.attr.state_selected};
@@ -77,10 +78,18 @@ final class TvStyle {
         return drawable;
     }
 
+    GradientDrawable glassSurface() {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xf2393b42, 0xf226282d});
+        drawable.setCornerRadius(dp(28));
+        drawable.setStroke(dp(1), 0xff50525c);
+        return drawable;
+    }
+
     LinearLayout panel(int horizontalPadding, int verticalPadding) {
         LinearLayout panel = new LinearLayout(context);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(surface(PANEL, 22, EDGE));
+        panel.setBackground(glassSurface());
         panel.setPadding(dp(horizontalPadding), dp(verticalPadding), dp(horizontalPadding),
                 dp(verticalPadding));
         return panel;
@@ -123,9 +132,9 @@ final class TvStyle {
 
     void focusSurface(View view) {
         StateListDrawable background = new StateListDrawable();
-        background.addState(FOCUSED, surface(FOCUS, 12, Color.TRANSPARENT));
-        background.addState(SELECTED, surface(FOCUS, 12, Color.TRANSPARENT));
-        background.addState(DEFAULT, surface(TILE, 12, Color.TRANSPARENT));
+        background.addState(FOCUSED, surface(FOCUS, 18, Color.TRANSPARENT));
+        background.addState(SELECTED, surface(FOCUS, 18, Color.TRANSPARENT));
+        background.addState(DEFAULT, surface(0x267a7c88, 18, Color.TRANSPARENT));
         view.setBackground(background);
 
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
