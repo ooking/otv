@@ -75,19 +75,6 @@ final class ChannelSidebar {
         addCapsule(controlsRow, guideBtn);
         addCapsule(controlsRow, optionsBtn);
 
-        // 胶囊行右侧：金色 DTMB GUIDE 品牌标识与操作提示
-        View spacer = new View(context);
-        controlsRow.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
-
-        TextView hint = style.text(13, TvStyle.MUTED, false);
-        hint.setText("← / → 选台   OK 确认播放   ↑ 功能菜单   返回 关闭");
-        hint.setPadding(0, 0, style.dp(14), 0);
-        controlsRow.addView(hint);
-
-        TextView brand = style.text(15, TvStyle.GOLD_GUIDE, true);
-        brand.setText("DTMB GUIDE");
-        controlsRow.addView(brand);
-
         // 2. 空状态提示
         emptyText = style.text(16, TvStyle.MUTED, false);
         emptyText.setPadding(style.dp(8), style.dp(16), style.dp(8), style.dp(16));
@@ -97,6 +84,7 @@ final class ChannelSidebar {
         // 3. 横向电视频道卡片走马灯
         scroll = new HorizontalScrollView(context);
         scroll.setHorizontalScrollBarEnabled(false);
+        scroll.setHorizontalFadingEdgeEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
@@ -290,29 +278,35 @@ final class ChannelSidebar {
 
             // 点击与按键切台
             final Channel currentChannel = channel;
+            int cardIndex = i;
             card.setOnClickListener(v -> actions.select(currentChannel));
-            card.setOnKeyListener((v, keyCode, event) -> {
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
-                    guideBtn.requestFocus();
-                    return true;
-                }
-                return false;
-            });
+            card.setOnKeyListener((v, keyCode, event) -> handleCardKey(cardIndex, keyCode, event));
 
             card.setOnFocusChangeListener((v, hasFocus) -> {
                 applyStyle.run();
-                if (hasFocus) {
-                    selectedId = currentChannel.id();
-                    if (!scroll.isLayoutRequested() && !v.isLayoutRequested()) {
-                        scroll.smoothScrollTo(v.getLeft() - style.dp(40), 0);
-                    }
-                }
+                if (hasFocus) selectedId = currentChannel.id();
             });
 
             LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(cardWidth, cardHeight);
             cardParams.rightMargin = style.dp(12);
             cardsContainer.addView(card, cardParams);
         }
+    }
+
+    private boolean handleCardKey(int cardIndex, int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
+            guideBtn.requestFocus();
+            return true;
+        }
+        if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            boolean right = keyCode == KeyEvent.KEYCODE_DPAD_RIGHT;
+            boolean rtl = cardsContainer.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+            View next = cardsContainer.getChildAt(cardIndex + (right == rtl ? -1 : 1));
+            // 滚动容器会在相邻卡片超出可见范围时将它移入视野。
+            if (next != null) next.requestFocus(right ? View.FOCUS_RIGHT : View.FOCUS_LEFT);
+        }
+        return true;
     }
 
     void restoreFocus(View previousFocus) {

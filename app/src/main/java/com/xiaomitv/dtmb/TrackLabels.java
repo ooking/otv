@@ -2,6 +2,7 @@ package com.xiaomitv.dtmb;
 
 import android.media.tv.TvTrackInfo;
 
+import java.util.List;
 import java.util.Locale;
 
 final class TrackLabels {
@@ -14,6 +15,20 @@ final class TrackLabels {
         int channels = track.getAudioChannelCount();
         if (channels > 0) label += " · " + channels + " 声道";
         return label;
+    }
+
+    static String subtitleLabel(TvTrackInfo track, int index) {
+        String name = trackName(track);
+        String label = "字幕 " + (index + 1);
+        return name.isEmpty() ? label : label + " · " + name;
+    }
+
+    static int selectedIndex(List<TvTrackInfo> tracks, String selectedId) {
+        if (selectedId == null) return -1;
+        for (int index = 0; index < tracks.size(); index++) {
+            if (selectedId.equals(tracks.get(index).getId())) return index;
+        }
+        return -1;
     }
 
     static String trackName(TvTrackInfo track) {

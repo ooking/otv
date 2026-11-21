@@ -22,6 +22,7 @@ final class Playback {
         void onTuning(long channel, boolean switching);
         void onTuneReady(long channel, String notice);
         void onTuneFailed();
+        void onTrackStateChanged();
         void onPlaybackActiveChanged(boolean active);
     }
 
@@ -161,6 +162,7 @@ final class Playback {
                 Log.i(TAG, "audio_tracks channel=" + channelId + " count=" + audioTrackCount);
                 Log.i(TAG, "subtitle_tracks channel=" + channelId + " count=" + subtitleTrackCount);
                 restoreSubtitles();
+                listener.onTrackStateChanged();
             }
 
             @Override
@@ -170,7 +172,10 @@ final class Playback {
                     Log.i(TAG, "audio_track_selected channel=" + channelId + " track=" + trackId);
                 } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
                     Log.i(TAG, "subtitle_selected channel=" + channelId + " track=" + trackId);
+                } else {
+                    return;
                 }
+                listener.onTrackStateChanged();
             }
         });
     }

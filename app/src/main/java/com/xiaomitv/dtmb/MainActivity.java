@@ -289,6 +289,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             showProgram(target, true, true);
             renderChannels();
             refreshOpenGuide();
+            refreshOptions();
         }
     }
 
@@ -316,6 +317,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         updateScreenKeepOn(false);
         updateMediaSession(false);
         screen.clearBanner();
+        refreshOptions();
+    }
+
+    @Override
+    public void onTrackStateChanged() {
+        refreshOptions();
     }
 
     @Override
@@ -414,8 +421,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private List<TvScreen.Option> optionItems() {
         List<TvScreen.Option> items = new ArrayList<>();
         if (current != null) {
-            items.add(new TvScreen.Option("声道与音轨", this::showAudioTracks));
-            items.add(new TvScreen.Option("字幕", this::showSubtitleTracks));
+            items.add(new TvScreen.Option("声道与音轨", audioTrackSummary(), this::showAudioTracks));
+            items.add(new TvScreen.Option("字幕", subtitleTrackSummary(), this::showSubtitleTracks));
             String favorite = favorites.contains(Long.toString(current.id()))
                     ? "取消收藏当前频道" : "收藏当前频道";
             items.add(new TvScreen.Option(favorite, this::favorite));
@@ -423,7 +430,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     ? "恢复当前频道显示" : "隐藏当前频道";
             items.add(new TvScreen.Option(hideLabel, this::toggleCurrentChannelHidden));
         }
-        items.add(new TvScreen.Option("频道管理（排序与隐藏）", this::openChannelManager));
+        items.add(new TvScreen.Option("频道管理（排序与隐藏）", "", current != null, this::openChannelManager));
         if (!canReadListings()) {
             items.add(new TvScreen.Option("授予电视节目权限", this::requestListingsPermission));
         }
@@ -443,6 +450,20 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             items.add(new TvScreen.Option(label, this::showXiaomiAudioSetting));
         }
         return items;
+    }
+
+    private String audioTrackSummary() {
+        List<TvTrackInfo> tracks = playback.audioTracks();
+        if (tracks.isEmpty()) return "暂无可用音轨";
+        int selected = TrackLabels.selectedIndex(tracks, playback.selectedAudioTrack());
+        return selected >= 0 ? TrackLabels.label(tracks.get(selected), selected) : "未报告当前音轨";
+    }
+
+    private String subtitleTrackSummary() {
+        List<TvTrackInfo> tracks = playback.subtitleTracks();
+        if (tracks.isEmpty()) return "暂无可选字幕";
+        int selected = TrackLabels.selectedIndex(tracks, playback.selectedSubtitleTrack());
+        return selected >= 0 ? TrackLabels.subtitleLabel(tracks.get(selected), selected) : "关闭字幕";
     }
 
     private void toggleCurrentChannelHidden() {
@@ -505,15 +526,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         } else {
             String[] labels = new String[tracks.size() + 1];
             labels[0] = "关闭字幕";
-            String selectedId = playback.selectedSubtitleTrack();
-            int selected = 0;
+            int selected = TrackLabels.selectedIndex(tracks, playback.selectedSubtitleTrack()) + 1;
             long channel = playback.channelId();
             for (int index = 0; index < tracks.size(); index++) {
-                TvTrackInfo track = tracks.get(index);
-                String name = TrackLabels.trackName(track);
-                labels[index + 1] = name.isEmpty() ? "字幕 " + (index + 1)
-                        : "字幕 " + (index + 1) + " · " + name;
-                if (track.getId().equals(selectedId)) selected = index + 1;
+                labels[index + 1] = TrackLabels.subtitleLabel(tracks.get(index), index);
             }
             dialog.setSingleChoiceItems(labels, selected, (view, index) -> {
                 TvTrackInfo track = index == 0 ? null : tracks.get(index - 1);
@@ -610,13 +626,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             dialog.setMessage("当前节目尚未报告可用音轨。画面就绪后可再打开菜单。");
         } else {
             String[] labels = new String[tracks.size()];
-            int selected = -1;
-            String selectedId = playback.selectedAudioTrack();
+            int selected = TrackLabels.selectedIndex(tracks, playback.selectedAudioTrack());
             long channel = playback.channelId();
             for (int index = 0; index < tracks.size(); index++) {
-                TvTrackInfo track = tracks.get(index);
-                labels[index] = TrackLabels.label(track, index);
-                if (track.getId().equals(selectedId)) selected = index;
+                labels[index] = TrackLabels.label(tracks.get(index), index);
             }
             dialog.setSingleChoiceItems(labels, selected, (view, index) -> {
                 if (!playback.selectAudioTrack(channel, tracks.get(index).getId())) {

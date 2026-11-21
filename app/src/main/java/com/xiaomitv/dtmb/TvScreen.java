@@ -36,7 +36,15 @@ final class TvScreen {
         void programDetails(Channel channel, Program program);
     }
 
-    record Option(String label, Runnable action) {}
+    record Option(String label, String summary, boolean dividerBefore, Runnable action) {
+        Option(String label, Runnable action) {
+            this(label, "", false, action);
+        }
+
+        Option(String label, String summary, Runnable action) {
+            this(label, summary, false, action);
+        }
+    }
 
     private enum Layer { CHANNELS, GUIDE, OPTIONS }
 
@@ -357,36 +365,67 @@ final class TvScreen {
 
         @Override
         public View getView(int position, View recycled, ViewGroup parent) {
-            LinearLayout row;
-            TextView title;
-            TextView arrow;
-            if (recycled instanceof LinearLayout layout) {
-                row = layout;
-                title = (TextView) row.getChildAt(0);
-                arrow = (TextView) row.getChildAt(1);
-            } else {
-                row = new LinearLayout(activity);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(style.dp(18), 0, style.dp(16), 0);
-                row.setLayoutParams(new AbsListView.LayoutParams(-1, style.dp(54)));
-                style.focusSurface(row);
-
-                title = style.text(16, TvStyle.TEXT, true);
-                title.setTextColor(style.focusText(TvStyle.TEXT));
-                title.setDuplicateParentStateEnabled(true);
-                style.trim(title, 1);
-                LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
-                row.addView(title, titleLp);
-
-                arrow = style.text(18, TvStyle.MUTED, false);
-                arrow.setTextColor(style.focusText(TvStyle.MUTED));
-                arrow.setText("›");
-                arrow.setDuplicateParentStateEnabled(true);
-                row.addView(arrow);
-            }
-            title.setText(getItem(position).label());
+            OptionRow row = recycled instanceof OptionRow existing ? existing : new OptionRow();
+            row.bind(getItem(position));
             return row;
+        }
+    }
+
+    private final class OptionRow extends LinearLayout {
+        private final View divider;
+        private final TextView title;
+        private final TextView summary;
+
+        OptionRow() {
+            super(activity);
+            setOrientation(VERTICAL);
+            setLayoutParams(new AbsListView.LayoutParams(-1, -2));
+
+            divider = new View(activity);
+            divider.setBackgroundColor(0x33ffffff);
+            LayoutParams dividerParams = new LayoutParams(-1, style.dp(1));
+            dividerParams.setMargins(style.dp(4), style.dp(4), style.dp(4), style.dp(12));
+            addView(divider, dividerParams);
+
+            LinearLayout tile = new LinearLayout(activity);
+            tile.setOrientation(HORIZONTAL);
+            tile.setGravity(Gravity.CENTER_VERTICAL);
+            tile.setMinimumHeight(style.dp(54));
+            tile.setPadding(style.dp(18), style.dp(7), style.dp(16), style.dp(7));
+            tile.setDuplicateParentStateEnabled(true);
+            style.focusSurface(tile);
+            addView(tile, new LayoutParams(-1, -2));
+
+            LinearLayout labels = new LinearLayout(activity);
+            labels.setOrientation(VERTICAL);
+            labels.setDuplicateParentStateEnabled(true);
+            tile.addView(labels, new LayoutParams(0, -2, 1f));
+
+            title = optionText(16, TvStyle.TEXT, true);
+            labels.addView(title);
+
+            summary = optionText(12, TvStyle.MUTED, false);
+            summary.setPadding(0, style.dp(2), 0, 0);
+            labels.addView(summary);
+
+            TextView arrow = optionText(18, TvStyle.MUTED, false);
+            arrow.setText("›");
+            tile.addView(arrow);
+        }
+
+        private TextView optionText(int size, int color, boolean medium) {
+            TextView text = style.text(size, color, medium);
+            text.setTextColor(style.focusText(color));
+            text.setDuplicateParentStateEnabled(true);
+            style.trim(text, 1);
+            return text;
+        }
+
+        void bind(Option option) {
+            divider.setVisibility(option.dividerBefore() ? VISIBLE : GONE);
+            title.setText(option.label());
+            summary.setText(option.summary());
+            summary.setVisibility(option.summary().isEmpty() ? GONE : VISIBLE);
         }
     }
 }
