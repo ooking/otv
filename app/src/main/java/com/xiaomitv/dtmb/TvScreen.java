@@ -162,17 +162,19 @@ final class TvScreen {
         }
     }
 
-    void showGuide(List<Channel> channels, long playingId, Function<Channel, List<Program>> schedules) {
-        if (push(Layer.GUIDE)) guide.show(channels, playingId, schedules);
+    void showGuide(List<Channel> channels, long playingId, boolean onlyFavorites,
+                   Function<Channel, List<Program>> schedules) {
+        if (push(Layer.GUIDE)) guide.show(channels, playingId, onlyFavorites, schedules);
     }
 
-    void updateGuide(List<Channel> channels, long playingId, Function<Channel, List<Program>> schedules) {
-        if (channels.isEmpty()) {
-            if (history.peek() == Layer.GUIDE) back();
-            else history.remove(Layer.GUIDE);
-        } else if (guideOpen()) {
-            guide.update(channels, playingId, schedules);
-        }
+    void updateGuide(List<Channel> channels, long playingId, boolean onlyFavorites,
+                     Function<Channel, List<Program>> schedules) {
+        if (guideOpen()) guide.update(channels, playingId, onlyFavorites, schedules);
+    }
+
+    void closeGuide() {
+        if (history.peek() == Layer.GUIDE) back();
+        else history.remove(Layer.GUIDE);
     }
 
     void showOptions(List<Option> items) {

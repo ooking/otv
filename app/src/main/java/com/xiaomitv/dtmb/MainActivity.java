@@ -268,7 +268,6 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         preferences.edit().putLong("last_channel", channel.id()).apply();
         screen.hidePanels();
         renderChannels();
-        if (screen.guideOpen()) screen.updateGuide(channels, channel.id(), guide::schedule);
         if (playback.requestedChannelId() == -1 && playback.isReady(channel.id())) {
             showProgram(channel, true, false);
         } else {
@@ -289,7 +288,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             current = target;
             showProgram(target, true, true);
             renderChannels();
-            if (screen.guideOpen()) screen.updateGuide(channels, target.id(), guide::schedule);
+            refreshOpenGuide();
         }
     }
 
@@ -376,6 +375,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     public void filter() {
         onlyFavorites = !onlyFavorites;
         renderChannels();
+        refreshOpenGuide();
     }
 
     private void favorite() {
@@ -384,6 +384,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!favorites.add(id)) favorites.remove(id);
         preferences.edit().putStringSet("favorites", new HashSet<>(favorites)).apply();
         renderChannels();
+        refreshOpenGuide();
         refreshOptions();
     }
 
@@ -392,7 +393,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (channels.isEmpty()) {
             openChannels();
         } else {
-            screen.showGuide(channels, currentId(), guide::schedule);
+            screen.showGuide(visibleChannels(), currentId(), onlyFavorites, guide::schedule);
         }
     }
 
@@ -752,7 +753,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.status("");
             screen.clearBanner();
             screen.clearTransition();
-            screen.updateGuide(channels, currentId(), guide::schedule);
+            screen.closeGuide();
             refreshOptions();
             renderChannels();
             if (!screen.panelOpen()) screen.showChannels();
@@ -765,7 +766,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.status("");
             screen.clearBanner();
             screen.clearTransition();
-            screen.updateGuide(channels, currentId(), guide::schedule);
+            screen.closeGuide();
             refreshOptions();
             emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
             renderChannels();
@@ -798,7 +799,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.status("");
             screen.clearBanner();
             screen.clearTransition();
-            screen.updateGuide(channels, currentId(), guide::schedule);
+            screen.closeGuide();
             refreshOptions();
             emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
             renderChannels();
@@ -822,7 +823,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private void renderGuide() {
         if (!active) return;
         renderChannels();
-        if (screen.guideOpen()) screen.updateGuide(channels, currentId(), guide::schedule);
+        refreshOpenGuide();
         if (screen.hasProgramOverlay()) {
             TvListings.Channel channel = findChannel(playback.channelId());
             if (channel != null) {
@@ -830,6 +831,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                 screen.updateBanner(channel, nowPlaying(channel, now), nextProgram(channel, now),
                         playback.programBadges(channel.id()));
             }
+        }
+    }
+
+    private void refreshOpenGuide() {
+        if (screen.guideOpen()) {
+            screen.updateGuide(visibleChannels(), currentId(), onlyFavorites, guide::schedule);
         }
     }
 

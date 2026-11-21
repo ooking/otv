@@ -6,8 +6,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.text.TextUtils;
+import android.util.LruCache;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -38,13 +40,11 @@ final class GuideGrid extends LinearLayout {
     private final TvStyle style;
     private final TvScreen.Actions actions;
     private final DateFormat clockFormat = new SimpleDateFormat("yyyy/MM/dd(E) HH:mm", Locale.getDefault());
-    private final DateFormat dateFormat = new SimpleDateFormat("M/dd (E)", Locale.getDefault());
     private final DateFormat hourFormat = new SimpleDateFormat("HH時", Locale.getDefault());
     private final DateFormat timeFormat;
 
     // 顶部 Header 控件
     private final TextView groupPill;
-    private final TextView dateSwitcher;
     private final TextView heroTitle;
     private final TextView heroMeta;
     private final TextView heroLiveTag;
@@ -54,14 +54,10 @@ final class GuideGrid extends LinearLayout {
     // 中间节目表矩阵
     private final MatrixView matrix;
 
-    // 底部状态栏
-    private final TextView bottomChannelLabel;
-    private final TextView bottomHint;
-
     private List<Channel> channels = Collections.emptyList();
     private Function<Channel, List<Program>> schedules = channel -> Collections.emptyList();
-    private long playingId;
-    private int selectedChannelIndex = 0;
+    private long playingId = -1;
+    private int selectedChannelIndex;
     private long cursor;
     private long windowStart;
     private long earliest;
@@ -95,29 +91,14 @@ final class GuideGrid extends LinearLayout {
         header.setPadding(style.dp(20), style.dp(14), style.dp(20), style.dp(12));
         header.setBackgroundColor(0xf5171920);
 
-        // 左侧：分类胶囊与日期切换
-        LinearLayout leftGroup = new LinearLayout(context);
-        leftGroup.setOrientation(VERTICAL);
-        leftGroup.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-
-        groupPill = style.text(13, TvStyle.TEXT, true);
-        groupPill.setText("全部频道");
-        groupPill.setPadding(style.dp(12), style.dp(5), style.dp(12), style.dp(5));
-        groupPill.setBackground(style.surface(TvStyle.PILL_DEFAULT, 12, TvStyle.TILE_BORDER));
-        leftGroup.addView(groupPill);
-
-        dateSwitcher = style.text(14, TvStyle.MUTED, true);
-        dateSwitcher.setPadding(0, style.dp(6), 0, 0);
-        leftGroup.addView(dateSwitcher);
-        header.addView(leftGroup, new LinearLayout.LayoutParams(style.dp(130), -2));
-
-        // 中间：当前选中节目的详细看板 (Hero Details)
+        // 左侧：当前选中节目的详细信息
         LinearLayout centerHero = new LinearLayout(context);
         centerHero.setOrientation(VERTICAL);
-        centerHero.setPadding(style.dp(16), 0, style.dp(16), 0);
+        centerHero.setPadding(0, 0, style.dp(16), 0);
 
         heroTitle = style.text(22, TvStyle.TEXT, true);
         style.trim(heroTitle, 1);
+        heroTitle.setLines(1);
         centerHero.addView(heroTitle);
 
         LinearLayout metaRow = new LinearLayout(context);
@@ -126,7 +107,9 @@ final class GuideGrid extends LinearLayout {
         metaRow.setPadding(0, style.dp(4), 0, style.dp(4));
 
         heroMeta = style.text(14, TvStyle.MUTED, true);
-        metaRow.addView(heroMeta);
+        style.trim(heroMeta, 1);
+        heroMeta.setLines(1);
+        metaRow.addView(heroMeta, new LinearLayout.LayoutParams(-2, -2, 1f));
 
         heroLiveTag = style.text(12, Color.WHITE, true);
         heroLiveTag.setText("放送中");
@@ -135,25 +118,30 @@ final class GuideGrid extends LinearLayout {
         LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams(-2, -2);
         tagParams.leftMargin = style.dp(10);
         metaRow.addView(heroLiveTag, tagParams);
-        centerHero.addView(metaRow);
+        centerHero.addView(metaRow, new LinearLayout.LayoutParams(-2, -2));
 
         heroSynopsis = style.text(14, 0xffa0a4b5, false);
         style.trim(heroSynopsis, 2);
-        centerHero.addView(heroSynopsis);
+        Paint.FontMetricsInt synopsisMetrics = heroSynopsis.getPaint().getFontMetricsInt();
+        int synopsisHeight = 2 * heroSynopsis.getLineHeight()
+                + synopsisMetrics.ascent - synopsisMetrics.top + synopsisMetrics.bottom - synopsisMetrics.descent;
+        centerHero.addView(heroSynopsis, new LinearLayout.LayoutParams(-1, synopsisHeight));
         header.addView(centerHero, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        // 右侧：金色标牌与系统时钟
+        // 右侧：系统时钟与频道分类
         LinearLayout rightGroup = new LinearLayout(context);
         rightGroup.setOrientation(VERTICAL);
         rightGroup.setGravity(Gravity.END | Gravity.TOP);
 
-        TextView brand = style.text(18, TvStyle.GOLD_GUIDE, true);
-        brand.setText("DTMB GUIDE");
-        rightGroup.addView(brand);
-
         clockView = style.text(13, TvStyle.MUTED, false);
-        clockView.setPadding(0, style.dp(4), 0, 0);
-        rightGroup.addView(clockView);
+        rightGroup.addView(clockView, new LinearLayout.LayoutParams(-2, -2));
+
+        groupPill = style.text(13, TvStyle.TEXT, true);
+        groupPill.setPadding(style.dp(12), style.dp(5), style.dp(12), style.dp(5));
+        groupPill.setBackground(style.surface(TvStyle.PILL_DEFAULT, 12, TvStyle.TILE_BORDER));
+        LinearLayout.LayoutParams groupParams = new LinearLayout.LayoutParams(-2, -2);
+        groupParams.topMargin = style.dp(6);
+        rightGroup.addView(groupPill, groupParams);
         header.addView(rightGroup, new LinearLayout.LayoutParams(style.dp(180), -2));
 
         addView(header, new LayoutParams(-1, -2));
@@ -169,34 +157,39 @@ final class GuideGrid extends LinearLayout {
         footer.setPadding(style.dp(20), style.dp(9), style.dp(20), style.dp(9));
         footer.setBackgroundColor(0xff121318);
 
-        bottomChannelLabel = style.text(13, TvStyle.MUTED, false);
-        bottomChannelLabel.setVisibility(GONE); // 移除冗余重复的频道名，保持界面清爽
-
-        bottomHint = style.text(13, 0xffa0a4b5, false);
+        TextView bottomHint = style.text(13, 0xffa0a4b5, false);
         bottomHint.setText("← / → 切换频道   ·   ↑ / ↓ 浏览时段   ·   OK 观看/详情   ·   返回 退出");
         footer.addView(bottomHint);
         addView(footer, new LayoutParams(-1, -2));
     }
 
-    void show(List<Channel> channels, long playingId, Function<Channel, List<Program>> schedules) {
-        now = System.currentTimeMillis();
-        cursor = now;
+    void show(List<Channel> channels, long playingId, boolean onlyFavorites,
+              Function<Channel, List<Program>> schedules) {
+        cursor = System.currentTimeMillis();
         windowStart = currentHour();
         earliest = windowStart - 2 * HOUR;
         this.channels = Collections.emptyList();
-        update(channels, playingId, schedules);
+        matrix.resetScroll();
+        update(channels, playingId, onlyFavorites, schedules);
         requestFocus();
     }
 
-    void update(List<Channel> channels, long playingId, Function<Channel, List<Program>> schedules) {
-        long selectedId = this.channels.isEmpty() ? playingId : this.channels.get(selectedChannelIndex).id();
+    void update(List<Channel> channels, long playingId, boolean onlyFavorites,
+                Function<Channel, List<Program>> schedules) {
+        long selectedId = this.channels.isEmpty() || this.playingId != playingId
+                ? playingId : this.channels.get(selectedChannelIndex).id();
         this.channels = channels;
         this.playingId = playingId;
         this.schedules = schedules;
         now = System.currentTimeMillis();
+        groupPill.setText(onlyFavorites ? "收藏频道" : "全部频道");
 
         if (channels.isEmpty()) {
-            renderHeader();
+            clockView.setText(clockFormat.format(new Date(now)));
+            heroTitle.setText(onlyFavorites ? "还没有收藏频道。" : NO_PROGRAM);
+            heroMeta.setText("");
+            heroLiveTag.setVisibility(INVISIBLE);
+            heroSynopsis.setText("");
             matrix.invalidate();
             return;
         }
@@ -288,20 +281,10 @@ final class GuideGrid extends LinearLayout {
     }
 
     private void renderHeader() {
-        if (channels.isEmpty()) {
-            heroTitle.setText(NO_PROGRAM);
-            heroMeta.setText("");
-            heroLiveTag.setVisibility(GONE);
-            heroSynopsis.setText("");
-            bottomChannelLabel.setText("");
-            return;
-        }
-
         Channel channel = channels.get(selectedChannelIndex);
         Slot slot = slotAt(selectedChannelIndex, cursor);
         Program program = slot.program();
 
-        dateSwitcher.setText("◀ " + dateFormat.format(new Date(cursor)) + " ▶");
         clockView.setText(clockFormat.format(new Date(System.currentTimeMillis())));
 
         if (program != null) {
@@ -311,19 +294,16 @@ final class GuideGrid extends LinearLayout {
                     + timeFormat.format(new Date(program.end())) + " (" + minutes + "分钟)";
             heroMeta.setText(timeSpan);
             boolean isLive = now >= program.start() && now < program.end();
-            heroLiveTag.setVisibility(isLive ? VISIBLE : GONE);
+            heroLiveTag.setVisibility(isLive ? VISIBLE : INVISIBLE);
             String desc = program.description();
             heroSynopsis.setText(TextUtils.isEmpty(desc) ? "暂无详细内容介绍。" : desc);
         } else {
             heroTitle.setText(NO_PROGRAM);
             heroMeta.setText(channel.name() + "   " + timeFormat.format(new Date(slot.start())) + " ~ "
                     + timeFormat.format(new Date(slot.end())));
-            heroLiveTag.setVisibility(GONE);
+            heroLiveTag.setVisibility(INVISIBLE);
             heroSynopsis.setText("此时间段暂未获取到电台的节目单广播或网络 EPG 资料。");
         }
-
-        String statusStr = (playingId == channel.id() ? "正在播出  " : "") + channel.label();
-        bottomChannelLabel.setText(statusStr);
     }
 
     private Slot slotAt(int channelIndex, long time) {
@@ -342,11 +322,16 @@ final class GuideGrid extends LinearLayout {
         return local.withMinute(0).withSecond(0).withNano(0).toInstant().toEpochMilli();
     }
 
+    private record ProgramTitle(String text, int width, int maxLines) {}
+
     // 绘制矩阵的主体 View
     private final class MatrixView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final TextPaint titlePaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final LruCache<ProgramTitle, StaticLayout> programTitles = new LruCache<>(96);
         private final RectF rect = new RectF();
+        private final int titleLineHeight;
 
         private int scrollX = 0;
         private int scrollY = 0;
@@ -354,6 +339,21 @@ final class GuideGrid extends LinearLayout {
         MatrixView(Context context) {
             super(context);
             textPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            titlePaint.setTypeface(textPaint.getTypeface());
+            titlePaint.setTextSize(style.dp(13));
+            Paint.FontMetricsInt metrics = titlePaint.getFontMetricsInt();
+            titleLineHeight = metrics.descent - metrics.ascent;
+        }
+
+        void resetScroll() {
+            scrollX = 0;
+            scrollY = 0;
+        }
+
+        @Override
+        protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+            super.onSizeChanged(width, height, oldWidth, oldHeight);
+            ensureVisible();
         }
 
         void ensureVisible() {
@@ -362,11 +362,12 @@ final class GuideGrid extends LinearLayout {
             int targetX = selectedChannelIndex * columnWidth;
             int viewWidth = getWidth() - rulerWidth;
             if (viewWidth > 0) {
-                if (targetX < scrollX) {
+                if (targetX < scrollX || columnWidth >= viewWidth) {
                     scrollX = targetX;
                 } else if (targetX + columnWidth > scrollX + viewWidth) {
                     scrollX = targetX + columnWidth - viewWidth;
                 }
+                scrollX = Math.min(scrollX, Math.max(0, channels.size() * columnWidth - viewWidth));
             }
 
             // 确保纵向可见
@@ -549,47 +550,48 @@ final class GuideGrid extends LinearLayout {
                 canvas.drawRoundRect(rect, style.dp(4), style.dp(4), paint);
             }
 
-            // 绘制内容：左侧起始分钟、标题、角标
             float contentLeft = rect.left + style.dp(6);
-            float contentRight = rect.right - style.dp(6);
-            float currentY = rect.top + style.dp(14);
+            float visibleTop = Math.max(rect.top, scrollY);
+            float visibleBottom = Math.min(rect.bottom, scrollY + getHeight() - headerHeight);
+            float visibleHeight = visibleBottom - visibleTop;
+            int verticalPadding = visibleHeight < style.dp(28) ? style.dp(2) : style.dp(4);
+            float contentTop = visibleTop + verticalPadding;
+            float contentBottom = visibleBottom - verticalPadding;
+            int titleWidth = (int) (rect.right - style.dp(6) - contentLeft);
+            boolean showLiveBadge = visibleHeight >= style.dp(44) && now >= slot.start() && now < slot.end();
+            int badgeSpace = showLiveBadge ? style.dp(16) : 0;
+            int maxLines = (int) ((contentBottom - contentTop - badgeSpace) / titleLineHeight);
+            if (titleWidth <= 0 || maxLines < 1) return;
 
-            if (currentY > rect.bottom - style.dp(4)) return;
+            String title = slot.program() == null ? NO_PROGRAM : slot.program().title();
+            StaticLayout layout = programTitleLayout(title, titleWidth, maxLines);
+            layout.getPaint().setColor(isFocused ? TvStyle.FOCUS_TEXT : TvStyle.TEXT);
 
-            // 起始分钟标记
-            ZonedDateTime startDt = ZonedDateTime.ofInstant(
-                    java.time.Instant.ofEpochMilli(slot.start()), java.time.ZoneId.systemDefault());
-            String minuteStr = String.format(Locale.getDefault(), "%02d", startDt.getMinute());
-
-            textPaint.setTextAlign(Paint.Align.LEFT);
-            textPaint.setColor(isFocused ? 0xff000000 : TvStyle.MUTED);
-            textPaint.setTextSize(style.dp(11));
-            canvas.drawText(minuteStr, contentLeft, currentY, textPaint);
-
-            // 标题
-            float titleLeft = contentLeft + style.dp(18);
-            float titleWidth = contentRight - titleLeft;
-            if (titleWidth > 0) {
-                textPaint.setColor(isFocused ? 0xff000000 : TvStyle.TEXT);
-                textPaint.setTextSize(style.dp(13));
-                String title = slot.program() == null ? NO_PROGRAM : slot.program().title();
-                String clipped = TextUtils.ellipsize(title, textPaint, titleWidth,
-                        TextUtils.TruncateAt.END).toString();
-                canvas.drawText(clipped, titleLeft, currentY, textPaint);
+            int saved = canvas.save();
+            canvas.clipRect(contentLeft, contentTop, contentLeft + titleWidth, contentBottom);
+            canvas.translate(contentLeft, contentTop);
+            layout.draw(canvas);
+            if (showLiveBadge) {
+                textPaint.setTextAlign(Paint.Align.LEFT);
+                textPaint.setTextSize(style.dp(10));
+                textPaint.setColor(isFocused ? 0xffc62828 : TvStyle.RED_LIVE);
+                canvas.drawText("[放送中]", 0, layout.getHeight() + style.dp(2) - textPaint.ascent(), textPaint);
             }
+            canvas.restoreToCount(saved);
+        }
 
-            // 如果高度足够，多行展示简介或状态标签
-            if (rect.height() >= style.dp(44)) {
-                currentY += style.dp(16);
-                if (currentY <= rect.bottom - style.dp(6)) {
-                    boolean isLive = now >= slot.start() && now < slot.end();
-                    if (isLive) {
-                        textPaint.setColor(isFocused ? 0xffc62828 : TvStyle.RED_LIVE);
-                        textPaint.setTextSize(style.dp(10));
-                        canvas.drawText("[放送中]", contentLeft, currentY, textPaint);
-                    }
-                }
-            }
+        private StaticLayout programTitleLayout(String title, int width, int maxLines) {
+            ProgramTitle key = new ProgramTitle(title, width, maxLines);
+            StaticLayout layout = programTitles.get(key);
+            if (layout != null) return layout;
+
+            layout = StaticLayout.Builder.obtain(title, 0, title.length(), titlePaint, width)
+                    .setIncludePad(false)
+                    .setEllipsize(TextUtils.TruncateAt.END)
+                    .setMaxLines(maxLines)
+                    .build();
+            programTitles.put(key, layout);
+            return layout;
         }
     }
 }
