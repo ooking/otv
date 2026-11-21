@@ -1,0 +1,14 @@
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowBackground">#191A1E</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:colorAccent">#B5D2FF</item>
+        <item name="android:alertDialogTheme">@style/TvDialogTheme</item>
+    </style>
+
+    <style name="TvDialogTheme" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:colorBackground">#232429</item>
+        <item name="android:colorAccent">#B5D2FF</item>
+    </style>
+</resources>
