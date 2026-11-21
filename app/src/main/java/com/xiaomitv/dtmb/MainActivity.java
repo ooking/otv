@@ -8,6 +8,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.media.AudioManager;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -21,6 +24,7 @@ import android.os.OperationCanceledException;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -72,6 +76,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private ProgramGuide guide;
     private TvScreen screen;
     private Playback playback;
+    private MediaSession mediaSession;
     private SharedPreferences preferences;
     private Set<String> favorites = Collections.emptySet();
     private List<TvListings.Channel> channels = Collections.emptyList();
@@ -87,6 +92,23 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        mediaSession = new MediaSession(this, TAG);
+        mediaSession.setCallback(new MediaSession.Callback() {
+            @Override
+            public void onPlay() {
+                if (current != null) playback.tune(current.id());
+            }
+
+            @Override
+            public void onPause() {
+                playback.stop();
+            }
+
+            @Override
+            public void onStop() {
+                playback.stop();
+            }
+        });
         inputs = getSystemService(TvInputManager.class);
         listings = new TvListings(getContentResolver());
         preferences = getSharedPreferences("live_tv", MODE_PRIVATE);
@@ -118,6 +140,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     @Override
     protected void onPause() {
         active = false;
+        updateScreenKeepOn(false);
+        updateMediaSession(false);
         handler.removeCallbacks(refreshChannels);
         guide.stop();
         screen.clearBanner();
@@ -135,6 +159,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     @Override
     protected void onDestroy() {
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+            mediaSession = null;
+        }
         screen.finish();
         guide.close();
         queries.shutdownNow();
@@ -267,6 +296,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             return;
         }
         current = ready;
+        updateMediaMetadata(ready);
         if (!notice.isEmpty()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
         preferences.edit().putLong("last_channel", id).apply();
         guide.requestRefresh(5_000);
@@ -278,7 +308,52 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     @Override
     public void onTuneFailed() {
+        updateScreenKeepOn(false);
+        updateMediaSession(false);
         screen.clearBanner();
+    }
+
+    @Override
+    public void onPlaybackActiveChanged(boolean playing) {
+        updateScreenKeepOn(playing);
+        updateMediaSession(playing);
+    }
+
+    private void updateScreenKeepOn(boolean keepOn) {
+        if (active && keepOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void updateMediaSession(boolean playing) {
+        if (mediaSession == null) return;
+        if (playing) {
+            PlaybackState state = new PlaybackState.Builder()
+                    .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_STOP)
+                    .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                    .build();
+            mediaSession.setPlaybackState(state);
+            updateMediaMetadata(current);
+            mediaSession.setActive(true);
+        } else {
+            PlaybackState state = new PlaybackState.Builder()
+                    .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_STOP)
+                    .setState(PlaybackState.STATE_STOPPED, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 0.0f)
+                    .build();
+            mediaSession.setPlaybackState(state);
+            mediaSession.setActive(false);
+        }
+    }
+
+    private void updateMediaMetadata(TvListings.Channel channel) {
+        if (mediaSession == null || channel == null) return;
+        MediaMetadata metadata = new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, channel.label())
+                .putString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE, channel.label())
+                .build();
+        mediaSession.setMetadata(metadata);
     }
 
     private void showProgramInfo() {

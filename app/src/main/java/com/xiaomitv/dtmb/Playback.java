@@ -22,6 +22,7 @@ final class Playback {
         void onTuning(long channel, boolean switching);
         void onTuneReady(long channel, String notice);
         void onTuneFailed();
+        void onPlaybackActiveChanged(boolean active);
     }
 
     private final TvView view;
@@ -52,6 +53,7 @@ final class Playback {
     private int audioTrackCount;
     private String state = "未播放";
     private String focusState = "未请求";
+    private boolean activePlayback;
 
     Playback(TvView view, AudioManager audio, SharedPreferences preferences, Handler handler,
              Listener listener) {
@@ -74,6 +76,7 @@ final class Playback {
                     setState("画面已就绪", "");
                     applyVolume("video_available");
                     restoreSubtitles();
+                    updatePlaybackActive(true);
                 }
             }
 
@@ -99,6 +102,7 @@ final class Playback {
                 } else {
                     setState(message, tuning ? "" : message);
                     syncXiaomiAudio(false);
+                    if (!tuning) updatePlaybackActive(audioOnly);
                 }
             }
 
@@ -116,6 +120,7 @@ final class Playback {
             public void onContentBlocked(String inputId, android.media.tv.TvContentRating rating) {
                 if (!isActive(inputId) || (tuning && !submitted)) return;
                 contentBlocked = true;
+                updatePlaybackActive(false);
                 String message = "此频道受系统家长控制限制";
                 if (tuning && lastReadyChannel != -1 && lastReadyChannel != channelId) {
                     failTune(message);
@@ -139,6 +144,7 @@ final class Playback {
                 restoreSubtitles();
                 if (videoAvailable) {
                     lastReadyChannel = channelId;
+                    updatePlaybackActive(true);
                     listener.onTuneReady(channelId, "");
                 }
             }
@@ -263,6 +269,7 @@ final class Playback {
         contentBlocked = false;
         audioTrackCount = 0;
         boolean switching = lastReadyChannel != -1;
+        if (!switching) updatePlaybackActive(false);
         setState("正在切换频道…", switching ? "" : "正在连接直播信号…");
         listener.onTuning(id, switching);
 
@@ -294,6 +301,7 @@ final class Playback {
         setState(videoAvailable ? "画面已就绪" : status, status);
         applyVolume(videoAvailable ? "video_available" : "audio_only");
         restoreSubtitles();
+        updatePlaybackActive(videoAvailable || audioOnly);
         listener.onTuneReady(ready, notice);
         if (!tuning && next != -1 && next != ready) startTune(next);
     }
@@ -345,6 +353,19 @@ final class Playback {
         audioOnly = false;
         audioTrackCount = 0;
         state = "未播放";
+        updatePlaybackActive(false);
+    }
+
+    boolean isPlaying() {
+        return activePlayback;
+    }
+
+    private void updatePlaybackActive(boolean active) {
+        if (activePlayback != active) {
+            activePlayback = active;
+            view.setKeepScreenOn(active);
+            listener.onPlaybackActiveChanged(active);
+        }
     }
 
     void retryVolume() {
@@ -371,6 +392,7 @@ final class Playback {
 
     String diagnostics() {
         return "播放状态  " + state + "\n"
+                + "屏幕常亮  " + (activePlayback ? "已开启（防止待机与屏保）" : "未开启") + "\n"
                 + "音频焦点  " + focusState + "\n"
                 + "TIF 音量  " + (channelId == -1 ? "无会话" : volume()) + "\n"
                 + "会话报告的音轨数  " + audioTrackCount + "\n"
