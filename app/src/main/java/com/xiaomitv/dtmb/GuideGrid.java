@@ -100,9 +100,9 @@ final class GuideGrid extends LinearLayout {
         leftGroup.setOrientation(VERTICAL);
         leftGroup.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
 
-        groupPill = style.text(14, TvStyle.TEXT, true);
-        groupPill.setText("地上D ▼");
-        groupPill.setPadding(style.dp(12), style.dp(4), style.dp(12), style.dp(4));
+        groupPill = style.text(13, TvStyle.TEXT, true);
+        groupPill.setText("全部频道");
+        groupPill.setPadding(style.dp(12), style.dp(5), style.dp(12), style.dp(5));
         groupPill.setBackground(style.surface(TvStyle.PILL_DEFAULT, 12, TvStyle.TILE_BORDER));
         leftGroup.addView(groupPill);
 
@@ -165,15 +165,15 @@ final class GuideGrid extends LinearLayout {
         // 3. 底部：状态与操作提示栏
         LinearLayout footer = new LinearLayout(context);
         footer.setOrientation(HORIZONTAL);
-        footer.setGravity(Gravity.CENTER_VERTICAL);
-        footer.setPadding(style.dp(20), style.dp(8), style.dp(20), style.dp(8));
+        footer.setGravity(Gravity.CENTER);
+        footer.setPadding(style.dp(20), style.dp(9), style.dp(20), style.dp(9));
         footer.setBackgroundColor(0xff121318);
 
-        bottomChannelLabel = style.text(14, TvStyle.TEXT, true);
-        footer.addView(bottomChannelLabel, new LinearLayout.LayoutParams(0, -2, 1f));
+        bottomChannelLabel = style.text(13, TvStyle.MUTED, false);
+        bottomChannelLabel.setVisibility(GONE); // 移除冗余重复的频道名，保持界面清爽
 
-        bottomHint = style.text(13, TvStyle.MUTED, false);
-        bottomHint.setText("← / →  频道     ↑ / ↓  时段     确认  观看/详情     返回  退出");
+        bottomHint = style.text(13, 0xffa0a4b5, false);
+        bottomHint.setText("← / → 切换频道   ·   ↑ / ↓ 浏览时段   ·   OK 观看/详情   ·   返回 退出");
         footer.addView(bottomHint);
         addView(footer, new LayoutParams(-1, -2));
     }
@@ -506,7 +506,7 @@ final class GuideGrid extends LinearLayout {
             textPaint.setTextAlign(Paint.Align.LEFT);
             textPaint.setColor(selected ? TvStyle.FOCUS : TvStyle.MUTED);
             textPaint.setTextSize(style.dp(11));
-            String num = String.format(Locale.getDefault(), "%03d", channel.id() % 1000);
+            String num = channel.number().isEmpty() ? String.valueOf(channel.id()) : channel.number();
             canvas.drawText(num, left + style.dp(10), headerHeight / 2f + style.dp(4), textPaint);
 
             // 频道名称

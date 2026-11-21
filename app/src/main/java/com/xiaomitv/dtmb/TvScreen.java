@@ -94,14 +94,39 @@ final class TvScreen {
         root.addView(guide, new FrameLayout.LayoutParams(-1, -1));
         guide.setVisibility(View.GONE);
 
-        options = style.panel(18, 18);
-        options.addView(style.title("选项"));
+        options = new LinearLayout(activity);
+        options.setOrientation(LinearLayout.VERTICAL);
+        options.setBackground(optionsDrawerSurface());
+        options.setPadding(style.dp(24), style.dp(22), style.dp(24), style.dp(20));
+
+        TextView optTitle = style.text(22, TvStyle.TEXT, true);
+        optTitle.setText("设置与选项");
+        options.addView(optTitle);
+
+        TextView optSub = style.text(13, TvStyle.MUTED, false);
+        optSub.setText("按 OK 键进入设置 · 返回键关闭");
+        optSub.setPadding(0, style.dp(4), 0, style.dp(12));
+        options.addView(optSub);
+
+        View optDivider = new View(activity);
+        optDivider.setBackgroundColor(0x22ffffff);
+        options.addView(optDivider, new LinearLayout.LayoutParams(-1, style.dp(1)));
+
         optionsList = style.list();
+        optionsList.setDivider(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        optionsList.setDividerHeight(style.dp(8));
         optionsList.setAdapter(optionRows);
         optionsList.setOnItemClickListener((parent, view, position, id) -> optionItems.get(position).action().run());
         LinearLayout.LayoutParams optionsParams = new LinearLayout.LayoutParams(-1, 0, 1);
-        optionsParams.topMargin = style.dp(12);
+        optionsParams.topMargin = style.dp(14);
         options.addView(optionsList, optionsParams);
+
+        TextView optFooter = style.text(12, 0xff707485, false);
+        optFooter.setText("OTV · DTMB 播放核心");
+        optFooter.setGravity(Gravity.CENTER);
+        optFooter.setPadding(0, style.dp(10), 0, 0);
+        options.addView(optFooter);
+
         root.addView(options, inset(new FrameLayout.LayoutParams(panelWidth(0.36f, 530), -1, Gravity.END)));
         options.setVisibility(View.GONE);
 
@@ -318,6 +343,14 @@ final class TvScreen {
         return params;
     }
 
+    private GradientDrawable optionsDrawerSurface() {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xf51c1e28, 0xf8111218});
+        drawable.setCornerRadius(style.dp(24));
+        drawable.setStroke(style.dp(1), 0x33ffffff);
+        return drawable;
+    }
+
     private final class OptionsAdapter extends BaseAdapter {
         @Override public int getCount() { return optionItems.size(); }
         @Override public Option getItem(int position) { return optionItems.get(position); }
@@ -325,20 +358,36 @@ final class TvScreen {
 
         @Override
         public View getView(int position, View recycled, ViewGroup parent) {
-            TextView item;
-            if (recycled instanceof TextView text) {
-                item = text;
+            LinearLayout row;
+            TextView title;
+            TextView arrow;
+            if (recycled instanceof LinearLayout layout) {
+                row = layout;
+                title = (TextView) row.getChildAt(0);
+                arrow = (TextView) row.getChildAt(1);
             } else {
-                item = style.text(18, TvStyle.TEXT, true);
-                item.setTextColor(style.focusText(TvStyle.TEXT));
-                item.setGravity(Gravity.CENTER_VERTICAL);
-                item.setPadding(style.dp(14), 0, style.dp(14), 0);
-                item.setLayoutParams(new AbsListView.LayoutParams(-1, style.dp(52)));
-                style.trim(item, 2);
-                style.focusSurface(item);
+                row = new LinearLayout(activity);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(style.dp(18), 0, style.dp(16), 0);
+                row.setLayoutParams(new AbsListView.LayoutParams(-1, style.dp(54)));
+                style.focusSurface(row);
+
+                title = style.text(16, TvStyle.TEXT, true);
+                title.setTextColor(style.focusText(TvStyle.TEXT));
+                title.setDuplicateParentStateEnabled(true);
+                style.trim(title, 1);
+                LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
+                row.addView(title, titleLp);
+
+                arrow = style.text(18, TvStyle.MUTED, false);
+                arrow.setTextColor(style.focusText(TvStyle.MUTED));
+                arrow.setText("›");
+                arrow.setDuplicateParentStateEnabled(true);
+                row.addView(arrow);
             }
-            item.setText(getItem(position).label());
-            return item;
+            title.setText(getItem(position).label());
+            return row;
         }
     }
 }

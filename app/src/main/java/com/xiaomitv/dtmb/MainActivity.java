@@ -198,11 +198,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!screen.panelOpen()) {
             boolean released = event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled();
             switch (key) {
-                case KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    if (firstPress) step(key == KeyEvent.KEYCODE_DPAD_UP ? 1 : -1);
+                case KeyEvent.KEYCODE_DPAD_UP -> {
+                    if (firstPress) step(1);
                     return true;
                 }
-                case KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
+                case KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
                         KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                     if (released) openChannels();
                     return true;

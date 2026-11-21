@@ -132,7 +132,7 @@ final class ProgramOverlay extends LinearLayout {
         this.program = program;
 
         String numberStr = channel.number().isEmpty()
-                ? String.format(java.util.Locale.getDefault(), "%03d", channel.id() % 1000)
+                ? String.valueOf(channel.id())
                 : channel.number();
         channelBadge.setText(numberStr);
 

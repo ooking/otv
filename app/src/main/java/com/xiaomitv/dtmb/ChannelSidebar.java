@@ -1,11 +1,8 @@
 package com.xiaomitv.dtmb;
 
-import android.animation.ObjectAnimator;
-import android.animation.StateListAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,7 +18,6 @@ import java.text.DateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -32,13 +28,13 @@ final class ChannelSidebar {
     private final TvScreen.Actions actions;
     private final DateFormat timeFormat;
 
-    // 顶部控制胶囊行
+    // 顶部控制胶囊行 (图 2 胶囊条)
     private final LinearLayout controlsRow;
     private final Button filterBtn;
     private final Button guideBtn;
     private final Button optionsBtn;
 
-    // 中部横向频道卡片走马灯 (图 2 风格)
+    // 中部横向电视频道走马灯 (图 2 底部横向频道卡片)
     private final HorizontalScrollView scroll;
     private final LinearLayout cardsContainer;
 
@@ -57,31 +53,36 @@ final class ChannelSidebar {
         this.actions = actions;
         this.timeFormat = android.text.format.DateFormat.getTimeFormat(context);
 
-        // 底栏整体面板：半透明深色毛玻璃，位于屏幕下部
+        // 底部整体浮层面板：深色毛玻璃，位于屏幕下部
         view = new LinearLayout(context);
         view.setOrientation(LinearLayout.VERTICAL);
         view.setBackground(bottomGlassSurface());
-        view.setPadding(style.dp(24), style.dp(16), style.dp(24), style.dp(16));
+        view.setPadding(style.dp(28), style.dp(18), style.dp(28), style.dp(20));
 
-        // 1. 控制胶囊行 (图 2 胶囊条)
+        // 1. 控制胶囊行
         controlsRow = new LinearLayout(context);
         controlsRow.setOrientation(LinearLayout.HORIZONTAL);
         controlsRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(-1, -2);
-        controlsParams.bottomMargin = style.dp(12);
+        controlsParams.bottomMargin = style.dp(14);
         view.addView(controlsRow, controlsParams);
 
-        filterBtn = style.capsuleButton("全部", actions::filter);
-        guideBtn = style.capsuleButton("节目指南", actions::openGuide);
-        optionsBtn = style.capsuleButton("选项", actions::options);
+        filterBtn = style.capsuleButton("全部频道", actions::filter);
+        guideBtn = style.capsuleButton("节目指南 (EPG)", actions::openGuide);
+        optionsBtn = style.capsuleButton("设置选项", actions::options);
 
         addCapsule(controlsRow, filterBtn);
         addCapsule(controlsRow, guideBtn);
         addCapsule(controlsRow, optionsBtn);
 
-        // 胶囊行右侧：金色 DTMB GUIDE 品牌标识
+        // 胶囊行右侧：金色 DTMB GUIDE 品牌标识与操作提示
         View spacer = new View(context);
         controlsRow.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+
+        TextView hint = style.text(13, TvStyle.MUTED, false);
+        hint.setText("← / → 选台   OK 确认播放   ↑ 功能菜单   返回 关闭");
+        hint.setPadding(0, 0, style.dp(14), 0);
+        controlsRow.addView(hint);
 
         TextView brand = style.text(15, TvStyle.GOLD_GUIDE, true);
         brand.setText("DTMB GUIDE");
@@ -93,7 +94,7 @@ final class ChannelSidebar {
         emptyText.setVisibility(View.GONE);
         view.addView(emptyText);
 
-        // 3. 横向电视频道走马灯 (图 2 底部横向频道卡片)
+        // 3. 横向电视频道卡片走马灯
         scroll = new HorizontalScrollView(context);
         scroll.setHorizontalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -107,7 +108,7 @@ final class ChannelSidebar {
         scroll.addView(cardsContainer, new LinearLayout.LayoutParams(-2, -2));
         view.addView(scroll, new LinearLayout.LayoutParams(-1, -2));
 
-        // 遥控器上下导航绑定
+        // 按键导航绑定
         filterBtn.setOnKeyListener((v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
                 focusCurrentCard();
@@ -139,7 +140,7 @@ final class ChannelSidebar {
 
     private GradientDrawable bottomGlassSurface() {
         GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xf2181a22, 0xf8101115});
+                new int[]{0xf21a1c24, 0xf9101116});
         drawable.setCornerRadii(new float[]{
                 style.dp(24), style.dp(24),
                 style.dp(24), style.dp(24),
@@ -157,7 +158,7 @@ final class ChannelSidebar {
         this.playingId = playingId;
         this.nowPlaying = nowPlaying;
 
-        filterBtn.setText(onlyFavorites ? "频道: 收藏 ▼" : "频道: 全部 ▼");
+        filterBtn.setText(onlyFavorites ? "频道: 收藏 ★" : "频道: 全部");
         emptyText.setText(message);
         emptyText.setVisibility(channels.isEmpty() ? View.VISIBLE : View.GONE);
         scroll.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);
@@ -169,49 +170,61 @@ final class ChannelSidebar {
         cardsContainer.removeAllViews();
         if (channels.isEmpty()) return;
 
-        int cardWidth = style.dp(186);
-        int cardHeight = style.dp(98);
+        int cardWidth = style.dp(196);
+        int cardHeight = style.dp(102);
 
         for (int i = 0; i < channels.size(); i++) {
             Channel channel = channels.get(i);
             Program program = nowPlaying.apply(channel);
+            boolean isCurrentPlaying = (playingId == channel.id());
 
+            // 单个卡片容器
             LinearLayout card = new LinearLayout(context);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setFocusable(true);
             card.setFocusableInTouchMode(true);
             card.setClickable(true);
             card.setPadding(style.dp(12), style.dp(10), style.dp(12), style.dp(10));
-
-            // 卡片背景：未聚焦深色，聚焦时变为纯白高亮底色 (图 2 风格)
-            card.setBackground(cardStateBackground());
             style.attachElevation(card, style.dp(6));
 
-            // 1. 顶部：台号与频道名称
+            // 1. 顶部行：台号徽章 + 频道名 + 播放状态点
             LinearLayout topRow = new LinearLayout(context);
             topRow.setOrientation(LinearLayout.HORIZONTAL);
             topRow.setGravity(Gravity.CENTER_VERTICAL);
 
-            TextView numView = style.text(12, 0xff8c90a0, true);
-            numView.setText(String.format(Locale.getDefault(), "%03d", channel.id() % 1000));
-            numView.setTextColor(style.focusText(0xff8c90a0));
-            topRow.addView(numView);
+            // 电台序号：不固定 3 位，有数字直接用数字
+            String numStr = channel.number().isEmpty() ? String.valueOf(channel.id()) : channel.number();
+            TextView numBadge = style.text(12, 0xffa0a4b5, true);
+            numBadge.setText(numStr);
+            numBadge.setPadding(style.dp(6), style.dp(1), style.dp(6), style.dp(2));
+            numBadge.setBackground(style.surface(0x33ffffff, 6, Color.TRANSPARENT));
+            topRow.addView(numBadge);
 
-            TextView nameView = style.text(14, TvStyle.TEXT, true);
+            TextView nameView = style.text(14, 0xffffffff, true);
             nameView.setText(channel.label());
-            nameView.setTextColor(style.focusText(TvStyle.TEXT));
             style.trim(nameView, 1);
             LinearLayout.LayoutParams nameLp = new LinearLayout.LayoutParams(0, -2, 1f);
             nameLp.leftMargin = style.dp(8);
             topRow.addView(nameView, nameLp);
 
+            // 播放中小标
+            TextView liveBadge = style.text(11, TvStyle.RED_LIVE, true);
+            liveBadge.setText("● 播放中");
+            liveBadge.setVisibility(isCurrentPlaying ? View.VISIBLE : View.GONE);
+            topRow.addView(liveBadge);
+
             card.addView(topRow);
 
-            // 2. 中部：当前时间段
-            TextView timeView = style.text(12, 0xff8c90a0, false);
-            timeView.setTextColor(style.focusText(0xff8c90a0));
+            // 2. 中部分割线
+            View divider = new View(context);
+            divider.setBackgroundColor(0x22ffffff);
+            LinearLayout.LayoutParams divParams = new LinearLayout.LayoutParams(-1, style.dp(1));
+            divParams.setMargins(0, style.dp(8), 0, style.dp(6));
+            card.addView(divider, divParams);
+
+            // 3. 底部：播出时间与节目名
+            TextView timeView = style.text(11, 0xff9094a6, false);
             style.trim(timeView, 1);
-            timeView.setPadding(0, style.dp(6), 0, 0);
             if (program != null) {
                 timeView.setText(timeFormat.format(new Date(program.start())) + "~");
             } else {
@@ -219,17 +232,42 @@ final class ChannelSidebar {
             }
             card.addView(timeView);
 
-            // 3. 底部：正在播出的节目名
             TextView progView = style.text(13, 0xffdcdfe8, true);
-            progView.setTextColor(style.focusText(0xff121316));
             style.trim(progView, 1);
-            progView.setPadding(0, style.dp(3), 0, 0);
+            progView.setPadding(0, style.dp(2), 0, 0);
             if (program != null) {
                 progView.setText(program.title());
             } else {
-                progView.setText(playingId == channel.id() ? "正在播出" : "暂无节目资料");
+                progView.setText(isCurrentPlaying ? "正在播出" : "暂无节目资料");
             }
             card.addView(progView);
+
+            // 动态焦点样式切换函数（彻底解决白底白字问题，确保高对比度）
+            Runnable applyStyle = () -> {
+                boolean hasFocus = card.isFocused();
+                if (hasFocus) {
+                    // 聚焦态：纯白底色，深黑色文字
+                    card.setBackground(style.surface(0xffffffff, 12, Color.TRANSPARENT));
+                    numBadge.setBackground(style.surface(0x1a000000, 6, Color.TRANSPARENT));
+                    numBadge.setTextColor(0xff4b5563);
+                    nameView.setTextColor(0xff121316); // 纯黑粗体电台名！彻底解决看不见问题
+                    divider.setBackgroundColor(0x1a000000);
+                    timeView.setTextColor(0xff6b7280);
+                    progView.setTextColor(0xff121316); // 纯黑粗体节目名！
+                } else {
+                    // 未聚焦态：深灰半透，白色及浅灰文字
+                    card.setBackground(style.surface(0xdf222530, 12, 0x33ffffff));
+                    numBadge.setBackground(style.surface(0x33ffffff, 6, Color.TRANSPARENT));
+                    numBadge.setTextColor(0xffa0a4b5);
+                    nameView.setTextColor(0xffffffff);
+                    divider.setBackgroundColor(0x22ffffff);
+                    timeView.setTextColor(0xff9094a6);
+                    progView.setTextColor(0xffdcdfe8);
+                }
+            };
+
+            // 应用初始样式
+            applyStyle.run();
 
             // 点击与按键切台
             final Channel currentChannel = channel;
@@ -243,6 +281,7 @@ final class ChannelSidebar {
             });
 
             card.setOnFocusChangeListener((v, hasFocus) -> {
+                applyStyle.run();
                 if (hasFocus) {
                     selectedId = currentChannel.id();
                     scroll.smoothScrollTo(v.getLeft() - style.dp(40), 0);
@@ -253,16 +292,6 @@ final class ChannelSidebar {
             cardParams.rightMargin = style.dp(12);
             cardsContainer.addView(card, cardParams);
         }
-    }
-
-    private StateListDrawable cardStateBackground() {
-        StateListDrawable drawable = new StateListDrawable();
-        // 聚焦时：纯白高亮卡片 (白底黑字)
-        drawable.addState(new int[]{android.R.attr.state_focused}, style.surface(TvStyle.FOCUS, 12, Color.TRANSPARENT));
-        drawable.addState(new int[]{android.R.attr.state_selected}, style.surface(TvStyle.FOCUS, 12, Color.TRANSPARENT));
-        // 平常时：深色半透卡片
-        drawable.addState(new int[]{}, style.surface(0xe0222530, 12, 0x33ffffff));
-        return drawable;
     }
 
     void saveSelection() {
