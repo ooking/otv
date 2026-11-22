@@ -76,6 +76,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private ProgramGuide guide;
     private TvScreen screen;
     private Playback playback;
+    private XiaomiAvSettings avSettings;
     private MediaSession mediaSession;
     private SharedPreferences preferences;
     private Set<String> favorites = Collections.emptySet();
@@ -120,6 +121,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         hiddenChannels = ChannelManager.loadHidden(preferences);
         channelOrder = ChannelManager.loadOrder(preferences);
         screen = new TvScreen(this, handler, this);
+        avSettings = new XiaomiAvSettings(this, screen::hidePanels);
         guide = new ProgramGuide(this, listings, handler, this::renderGuide);
         playback = new Playback(screen.video, getSystemService(AudioManager.class), preferences, handler,
                 this);
@@ -426,6 +428,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     audioTrackSummary(), this::showAudioTracks));
             items.add(new TvScreen.Option("字幕", R.drawable.ic_subtitles,
                     subtitleTrackSummary(), this::showSubtitleTracks));
+            if (avSettings.available) {
+                items.add(new TvScreen.Option("图像设置", R.drawable.ic_picture, avSettings::openPicture));
+                items.add(new TvScreen.Option("声音设置", R.drawable.ic_audio, avSettings::openSound));
+            }
             String favorite = favorites.contains(Long.toString(current.id()))
                     ? "取消收藏当前频道" : "收藏当前频道";
             items.add(new TvScreen.Option(favorite, R.drawable.ic_favorite, this::favorite));
@@ -438,15 +444,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!canReadListings()) {
             items.add(new TvScreen.Option("授予电视节目权限", R.drawable.ic_guide, this::requestListingsPermission));
         }
-        items.add(new TvScreen.Option("刷新频道", R.drawable.ic_refresh, this::loadChannels));
-        items.add(new TvScreen.Option("系统搜台设置", R.drawable.ic_settings, this::openSetup));
+        items.add(new TvScreen.Option("前往小米直播搜台", R.drawable.ic_settings,
+                "打开地面数字电视后，按菜单键选择搜台", false, this::openSetup));
         if (current != null) {
-            items.add(new TvScreen.Option("刷新节目表", R.drawable.ic_refresh, () -> {
-                guide.requestRefresh(0);
-                renderGuide();
-            }));
             items.add(new TvScreen.Option("导入 XMLTV 节目表", R.drawable.ic_import, this::chooseXmlTvSource));
-            items.add(new TvScreen.Option("重新调谐当前频道", R.drawable.ic_refresh, this::retune));
             items.add(new TvScreen.Option("音频诊断", R.drawable.ic_audio, this::showAudioDiagnostics));
         }
         if (playback.supportsXiaomiAudio()) {
@@ -512,12 +513,6 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             }
         });
         dialog.show();
-    }
-
-    private void retune() {
-        if (current == null || !active) return;
-        screen.hidePanels();
-        playback.tune(current.id());
     }
 
     private void showSubtitleTracks() {
@@ -674,19 +669,18 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     }
 
     private void openSetup() {
-        TvInputInfo input = findInput();
+        Intent dtmb = new Intent("com.xiaomi.mitv.tvplayer.DTMB_PLAY")
+                .setClassName("com.xiaomi.mitv.tvplayer", "com.xiaomi.mitv.tvplayer.dtmb.DTMBActivity");
         try {
-            Intent setup = input == null ? null : input.createSetupIntent();
-            if (setup != null) {
-                startActivity(setup);
-                return;
-            }
+            startActivity(dtmb);
+            screen.hidePanels();
         } catch (ActivityNotFoundException | SecurityException exception) {
-            Log.i(TAG, "TIF setup activity unavailable", exception);
+            Log.i(TAG, "Xiaomi DTMB activity unavailable", exception);
+            new AlertDialog.Builder(this).setTitle("前往小米直播搜台")
+                    .setMessage("此固件无法直接打开地面数字电视。请从电视的输入源进入地面数字电视，"
+                            + "按菜单键选择搜台。回到 OTV 后会自动读取频道。")
+                    .setPositiveButton("关闭", null).show();
         }
-        new AlertDialog.Builder(this).setTitle("系统搜台")
-                .setMessage("请在小米电视自带的直播应用中切换至地面数字电视并完成搜台，再返回这里刷新频道。")
-                .setPositiveButton("关闭", null).show();
     }
 
     private TvInputInfo findInput() {
@@ -738,7 +732,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channelQuery != signal || !active) return;
                     channelQuery = null;
                     Log.i(TAG, "visible_channels=" + result.size());
-                    applyChannels(result, "没有可读取的 DTMB 频道。请先在小米电视自带的直播应用中搜台，再返回刷新。");
+                    applyChannels(result, "没有可读取的 DTMB 频道。请先在小米电视自带的直播应用中搜台，返回后会自动读取频道。");
                 });
             } catch (OperationCanceledException ignored) {
                 // A newer request or a lifecycle change replaced this query.
@@ -750,7 +744,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channels.isEmpty() || failure instanceof SecurityException) {
                         applyChannels(Collections.emptyList(), "系统频道数据不可读，请检查电视节目权限后重试。");
                     } else {
-                        screen.status("频道刷新失败，可从菜单重试");
+                        screen.status("频道读取失败，重新进入 OTV 可重试");
                     }
                 });
             }
