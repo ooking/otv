@@ -56,7 +56,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private final ContentObserver guideObserver = new ContentObserver(handler) {
         @Override
         public void onChange(boolean selfChange) {
-            if (active) guide.requestRefresh(750);
+            if (active) guide.onProgramsChanged();
         }
     };
     private final TvInputManager.TvInputCallback inputCallback = new TvInputManager.TvInputCallback() {
@@ -282,6 +282,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     @Override
     public void onTuning(long id, boolean switching) {
+        guide.cancelTunedRefresh();
         if (switching) screen.beginTransition();
         TvListings.Channel target = findChannel(id);
         if (target != null) {
@@ -305,7 +306,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         updateMediaMetadata(ready);
         if (!notice.isEmpty()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
         preferences.edit().putLong("last_channel", id).apply();
-        guide.requestRefresh(5_000);
+        guide.refreshAfterTune(ready);
         screen.revealVideo();
         showProgram(ready, true, false);
         renderGuide();
@@ -421,33 +422,36 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private List<TvScreen.Option> optionItems() {
         List<TvScreen.Option> items = new ArrayList<>();
         if (current != null) {
-            items.add(new TvScreen.Option("声道与音轨", audioTrackSummary(), this::showAudioTracks));
-            items.add(new TvScreen.Option("字幕", subtitleTrackSummary(), this::showSubtitleTracks));
+            items.add(new TvScreen.Option("声道与音轨", R.drawable.ic_audio,
+                    audioTrackSummary(), this::showAudioTracks));
+            items.add(new TvScreen.Option("字幕", R.drawable.ic_subtitles,
+                    subtitleTrackSummary(), this::showSubtitleTracks));
             String favorite = favorites.contains(Long.toString(current.id()))
                     ? "取消收藏当前频道" : "收藏当前频道";
-            items.add(new TvScreen.Option(favorite, this::favorite));
+            items.add(new TvScreen.Option(favorite, R.drawable.ic_favorite, this::favorite));
             String hideLabel = hiddenChannels.contains(Long.toString(current.id()))
                     ? "恢复当前频道显示" : "隐藏当前频道";
-            items.add(new TvScreen.Option(hideLabel, this::toggleCurrentChannelHidden));
+            items.add(new TvScreen.Option(hideLabel, R.drawable.ic_visibility, this::toggleCurrentChannelHidden));
         }
-        items.add(new TvScreen.Option("频道管理（排序与隐藏）", "", current != null, this::openChannelManager));
+        items.add(new TvScreen.Option("频道管理（排序与隐藏）", R.drawable.ic_channels,
+                "", current != null, this::openChannelManager));
         if (!canReadListings()) {
-            items.add(new TvScreen.Option("授予电视节目权限", this::requestListingsPermission));
+            items.add(new TvScreen.Option("授予电视节目权限", R.drawable.ic_guide, this::requestListingsPermission));
         }
-        items.add(new TvScreen.Option("刷新频道", this::loadChannels));
-        items.add(new TvScreen.Option("系统搜台设置", this::openSetup));
+        items.add(new TvScreen.Option("刷新频道", R.drawable.ic_refresh, this::loadChannels));
+        items.add(new TvScreen.Option("系统搜台设置", R.drawable.ic_settings, this::openSetup));
         if (current != null) {
-            items.add(new TvScreen.Option("刷新节目表", () -> {
+            items.add(new TvScreen.Option("刷新节目表", R.drawable.ic_refresh, () -> {
                 guide.requestRefresh(0);
                 renderGuide();
             }));
-            items.add(new TvScreen.Option("导入 XMLTV 节目表", this::chooseXmlTvSource));
-            items.add(new TvScreen.Option("重新调谐当前频道", this::retune));
-            items.add(new TvScreen.Option("音频诊断", this::showAudioDiagnostics));
+            items.add(new TvScreen.Option("导入 XMLTV 节目表", R.drawable.ic_import, this::chooseXmlTvSource));
+            items.add(new TvScreen.Option("重新调谐当前频道", R.drawable.ic_refresh, this::retune));
+            items.add(new TvScreen.Option("音频诊断", R.drawable.ic_audio, this::showAudioDiagnostics));
         }
         if (playback.supportsXiaomiAudio()) {
             String label = "小米音频兼容" + (playback.xiaomiAudioEnabled() ? " · 开启" : " · 关闭");
-            items.add(new TvScreen.Option(label, this::showXiaomiAudioSetting));
+            items.add(new TvScreen.Option(label, R.drawable.ic_audio, this::showXiaomiAudioSetting));
         }
         return items;
     }
@@ -563,7 +567,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                                 "输入 HTTPS 网址", "选择本地文件"},
                         (dialog, which) -> {
                             switch (which) {
-                                case 0 -> downloadXmlTv("https://epg.pw/xmltv/epg_HK.xml.gz");
+                                case 0 -> downloadXmlTv(XmlTvImporter.HONG_KONG_FEED);
                                 case 1 -> downloadXmlTv(
                                         "https://raw.githubusercontent.com/litiande03/epg/master/pl.xml.gz");
                                 case 2 -> askXmlTvUrl();

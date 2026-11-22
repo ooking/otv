@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.media.tv.TvContract;
 import android.media.tv.TvContract.Channels;
 import android.media.tv.TvContract.Programs;
+import android.net.Uri;
 import android.os.CancellationSignal;
 
 import java.util.ArrayList;
@@ -102,7 +103,10 @@ final class TvListings {
                 Programs.COLUMN_START_TIME_UTC_MILLIS,
                 Programs.COLUMN_END_TIME_UTC_MILLIS, Programs.COLUMN_SHORT_DESCRIPTION,
                 Programs.COLUMN_LONG_DESCRIPTION};
-        try (Cursor cursor = resolver.query(Programs.CONTENT_URI, columns, null, null, null, signal)) {
+        Uri uri = channels.size() == 1
+                ? TvContract.buildProgramsUriForChannel(channels.get(0).id(), now, until)
+                : Programs.CONTENT_URI;
+        try (Cursor cursor = resolver.query(uri, columns, null, null, null, signal)) {
             if (cursor == null) throw new IllegalStateException("TV provider unavailable");
             while (cursor.moveToNext()) {
                 signal.throwIfCanceled();

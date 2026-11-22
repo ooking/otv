@@ -33,6 +33,7 @@ final class ChannelSidebar {
     private final Button filterBtn;
     private final Button guideBtn;
     private final Button optionsBtn;
+    private boolean showingFavorites;
 
     // 中部横向电视频道走马灯 (图 2 底部横向频道卡片)
     private final HorizontalScrollView scroll;
@@ -67,9 +68,9 @@ final class ChannelSidebar {
         controlsParams.bottomMargin = style.dp(14);
         view.addView(controlsRow, controlsParams);
 
-        filterBtn = style.capsuleButton("全部频道", actions::filter);
-        guideBtn = style.capsuleButton("节目指南 (EPG)", actions::openGuide);
-        optionsBtn = style.capsuleButton("设置选项", actions::options);
+        filterBtn = style.capsuleButton("全部频道", R.drawable.ic_channels, actions::filter);
+        guideBtn = style.capsuleButton("节目指南 (EPG)", R.drawable.ic_guide, actions::openGuide);
+        optionsBtn = style.capsuleButton("设置选项", R.drawable.ic_settings, actions::options);
 
         addCapsule(controlsRow, filterBtn);
         addCapsule(controlsRow, guideBtn);
@@ -148,7 +149,12 @@ final class ChannelSidebar {
         this.playingId = playingId;
         this.nowPlaying = nowPlaying;
 
-        filterBtn.setText(onlyFavorites ? "频道: 收藏 ★" : "频道: 全部");
+        filterBtn.setText(onlyFavorites ? "频道: 收藏" : "频道: 全部");
+        if (showingFavorites != onlyFavorites) {
+            showingFavorites = onlyFavorites;
+            style.setLeadingIcon(filterBtn,
+                    onlyFavorites ? R.drawable.ic_favorite : R.drawable.ic_channels, 16);
+        }
         emptyText.setText(message);
         emptyText.setVisibility(channels.isEmpty() ? View.VISIBLE : View.GONE);
         scroll.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);

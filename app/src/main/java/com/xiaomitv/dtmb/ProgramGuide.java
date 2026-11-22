@@ -37,6 +37,11 @@ final class ProgramGuide {
     private final Runnable refresh = this::refresh;
     private final Runnable poll = this::poll;
 
+    private final Runnable tunedRefresh = this::refreshTunedChannel;
+    private Channel tunedChannel;
+    private CancellationSignal tunedQuery;
+    private int tunedAttempts;
+
     private List<Channel> channels = Collections.emptyList();
     private Map<String, List<Program>> snapshot = Collections.emptyMap();
     private CancellationSignal query;
@@ -64,6 +69,7 @@ final class ProgramGuide {
 
     void stop() {
         active = false;
+        cancelTunedRefresh();
         refreshPending = false;
         scheduledAt = Long.MAX_VALUE;
         handler.removeCallbacks(refresh);
@@ -96,6 +102,49 @@ final class ProgramGuide {
         scheduledAt = when;
         handler.removeCallbacks(refresh);
         handler.postAtTime(refresh, when);
+    }
+
+    void cancelTunedRefresh() {
+        handler.removeCallbacks(tunedRefresh);
+        if (tunedQuery != null) tunedQuery.cancel();
+        tunedQuery = null;
+        tunedChannel = null;
+    }
+
+    void refreshAfterTune(Channel channel) {
+        cancelTunedRefresh();
+        if (!active) return;
+        tunedChannel = channel;
+        tunedAttempts = 0;
+        handler.postDelayed(tunedRefresh, 1_000);
+    }
+
+    void onProgramsChanged() {
+        requestRefresh(750);
+        if (tunedChannel != null && tunedQuery == null) {
+            handler.removeCallbacks(tunedRefresh);
+            handler.post(tunedRefresh);
+        }
+    }
+
+    private void refreshTunedChannel() {
+        Channel channel = tunedChannel;
+        if (channel == null) return;
+        CancellationSignal signal = new CancellationSignal();
+        tunedQuery = signal;
+        tunedAttempts++;
+        worker.execute(() -> {
+            boolean currentFound = refreshSystem(Collections.singletonList(channel), signal);
+            handler.post(() -> {
+                if (tunedQuery != signal) return;
+                tunedQuery = null;
+                if (currentFound || tunedAttempts >= 3) {
+                    tunedChannel = null;
+                } else {
+                    handler.postDelayed(tunedRefresh, tunedAttempts * 3_000L);
+                }
+            });
+        });
     }
 
     List<Program> schedule(Channel channel) {
@@ -154,25 +203,7 @@ final class ProgramGuide {
         query = signal;
         lastRefresh = SystemClock.uptimeMillis();
         worker.execute(() -> {
-            try {
-                long now = System.currentTimeMillis();
-                Map<String, List<Program>> programs = listings.programs(
-                        lineup, now, now + GuideCache.WINDOW, signal);
-                signal.throwIfCanceled();
-                cache.update(GuideCache.SYSTEM, programs, now);
-                for (Channel channel : lineup) {
-                    List<Program> rows = programs.getOrDefault(channel.guideKey(), Collections.emptyList());
-                    long until = 0;
-                    for (Program row : rows) until = Math.max(until, row.end());
-                    Log.d(TAG, "system_coverage channel=" + channel.id()
-                            + " rows=" + rows.size() + " last_end=" + until);
-                }
-                publishCache();
-            } catch (OperationCanceledException ignored) {
-                // A lifecycle change canceled the system query.
-            } catch (RuntimeException failure) {
-                Log.w(TAG, "System program query failed", failure);
-            }
+            refreshSystem(lineup, signal);
             handler.post(() -> {
                 if (closed || query != signal) return;
                 query = null;
@@ -183,6 +214,35 @@ final class ProgramGuide {
                 onChange.run();
             });
         });
+    }
+
+    private boolean refreshSystem(List<Channel> lineup, CancellationSignal signal) {
+        try {
+            signal.throwIfCanceled();
+            long now = System.currentTimeMillis();
+            Map<String, List<Program>> programs = listings.programs(
+                    lineup, now, now + GuideCache.WINDOW, signal);
+            signal.throwIfCanceled();
+            cache.update(GuideCache.SYSTEM, programs, now);
+            boolean currentFound = false;
+            for (Channel channel : lineup) {
+                List<Program> rows = programs.getOrDefault(channel.guideKey(), Collections.emptyList());
+                long until = 0;
+                for (Program row : rows) {
+                    until = Math.max(until, row.end());
+                    if (row.start() <= now && now < row.end()) currentFound = true;
+                }
+                Log.d(TAG, "system_coverage channel=" + channel.id()
+                        + " rows=" + rows.size() + " last_end=" + until);
+            }
+            publishCache();
+            return currentFound;
+        } catch (OperationCanceledException ignored) {
+            // A lifecycle change canceled the system query.
+        } catch (RuntimeException failure) {
+            Log.w(TAG, "System program query failed", failure);
+        }
+        return false;
     }
 
     private void publishCache() {

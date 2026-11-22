@@ -45,7 +45,6 @@ final class GuideGrid extends LinearLayout {
 
     // 顶部 Header 控件
     private final TextView groupPill;
-    private final TextView heroTitle;
     private final TextView heroMeta;
     private final TextView heroLiveTag;
     private final TextView heroSynopsis;
@@ -96,11 +95,6 @@ final class GuideGrid extends LinearLayout {
         centerHero.setOrientation(VERTICAL);
         centerHero.setPadding(0, 0, style.dp(16), 0);
 
-        heroTitle = style.text(22, TvStyle.TEXT, true);
-        style.trim(heroTitle, 1);
-        heroTitle.setLines(1);
-        centerHero.addView(heroTitle);
-
         LinearLayout metaRow = new LinearLayout(context);
         metaRow.setOrientation(HORIZONTAL);
         metaRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -149,18 +143,6 @@ final class GuideGrid extends LinearLayout {
         // 2. 中间：矩阵视图
         matrix = new MatrixView(context);
         addView(matrix, new LayoutParams(-1, 0, 1f));
-
-        // 3. 底部：状态与操作提示栏
-        LinearLayout footer = new LinearLayout(context);
-        footer.setOrientation(HORIZONTAL);
-        footer.setGravity(Gravity.CENTER);
-        footer.setPadding(style.dp(20), style.dp(9), style.dp(20), style.dp(9));
-        footer.setBackgroundColor(0xff121318);
-
-        TextView bottomHint = style.text(13, 0xffa0a4b5, false);
-        bottomHint.setText("← / → 切换频道   ·   ↑ / ↓ 浏览时段   ·   OK 观看/详情   ·   返回 退出");
-        footer.addView(bottomHint);
-        addView(footer, new LayoutParams(-1, -2));
     }
 
     void show(List<Channel> channels, long playingId, boolean onlyFavorites,
@@ -186,8 +168,7 @@ final class GuideGrid extends LinearLayout {
 
         if (channels.isEmpty()) {
             clockView.setText(clockFormat.format(new Date(now)));
-            heroTitle.setText(onlyFavorites ? "还没有收藏频道。" : NO_PROGRAM);
-            heroMeta.setText("");
+            heroMeta.setText(onlyFavorites ? "还没有收藏频道。" : NO_PROGRAM);
             heroLiveTag.setVisibility(INVISIBLE);
             heroSynopsis.setText("");
             matrix.invalidate();
@@ -288,7 +269,6 @@ final class GuideGrid extends LinearLayout {
         clockView.setText(clockFormat.format(new Date(System.currentTimeMillis())));
 
         if (program != null) {
-            heroTitle.setText(program.title());
             long minutes = Math.max(1, (program.end() - program.start()) / 60000L);
             String timeSpan = channel.name() + "   " + timeFormat.format(new Date(program.start())) + " ~ "
                     + timeFormat.format(new Date(program.end())) + " (" + minutes + "分钟)";
@@ -298,7 +278,6 @@ final class GuideGrid extends LinearLayout {
             String desc = program.description();
             heroSynopsis.setText(TextUtils.isEmpty(desc) ? "暂无详细内容介绍。" : desc);
         } else {
-            heroTitle.setText(NO_PROGRAM);
             heroMeta.setText(channel.name() + "   " + timeFormat.format(new Date(slot.start())) + " ~ "
                     + timeFormat.format(new Date(slot.end())));
             heroLiveTag.setVisibility(INVISIBLE);

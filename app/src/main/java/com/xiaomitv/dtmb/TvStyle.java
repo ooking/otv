@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.text.TextUtils;
@@ -132,6 +133,21 @@ final class TvStyle {
         capsuleSurface(button);
         button.setOnClickListener(view -> onClick.run());
         return button;
+    }
+
+    Button capsuleButton(String label, int iconRes, Runnable onClick) {
+        Button button = capsuleButton(label, onClick);
+        setLeadingIcon(button, iconRes, 16);
+        return button;
+    }
+
+    void setLeadingIcon(TextView view, int iconRes, int sizeDp) {
+        Drawable icon = context.getDrawable(iconRes).mutate();
+        int size = dp(sizeDp);
+        icon.setBounds(0, 0, size, size);
+        view.setCompoundDrawablePadding(dp(8));
+        view.setCompoundDrawablesRelative(icon, null, null, null);
+        view.setCompoundDrawableTintList(view.getTextColors());
     }
 
     ColorStateList focusText(int restingColor) {

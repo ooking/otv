@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -36,13 +37,13 @@ final class TvScreen {
         void programDetails(Channel channel, Program program);
     }
 
-    record Option(String label, String summary, boolean dividerBefore, Runnable action) {
-        Option(String label, Runnable action) {
-            this(label, "", false, action);
+    record Option(String label, int iconRes, String summary, boolean dividerBefore, Runnable action) {
+        Option(String label, int iconRes, Runnable action) {
+            this(label, iconRes, "", false, action);
         }
 
-        Option(String label, String summary, Runnable action) {
-            this(label, summary, false, action);
+        Option(String label, int iconRes, String summary, Runnable action) {
+            this(label, iconRes, summary, false, action);
         }
     }
 
@@ -108,6 +109,7 @@ final class TvScreen {
 
         TextView optTitle = style.text(22, TvStyle.TEXT, true);
         optTitle.setText("设置与选项");
+        style.setLeadingIcon(optTitle, R.drawable.ic_settings, 20);
         options.addView(optTitle);
 
         TextView optSub = style.text(13, TvStyle.MUTED, false);
@@ -373,6 +375,7 @@ final class TvScreen {
 
     private final class OptionRow extends LinearLayout {
         private final View divider;
+        private final ImageView icon;
         private final TextView title;
         private final TextView summary;
 
@@ -395,6 +398,14 @@ final class TvScreen {
             tile.setDuplicateParentStateEnabled(true);
             style.focusSurface(tile);
             addView(tile, new LayoutParams(-1, -2));
+
+            icon = new ImageView(activity);
+            icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            icon.setDuplicateParentStateEnabled(true);
+            icon.setImageTintList(style.focusText(TvStyle.MUTED));
+            LayoutParams iconParams = new LayoutParams(style.dp(20), style.dp(20));
+            iconParams.setMarginEnd(style.dp(12));
+            tile.addView(icon, iconParams);
 
             LinearLayout labels = new LinearLayout(activity);
             labels.setOrientation(VERTICAL);
@@ -423,6 +434,7 @@ final class TvScreen {
 
         void bind(Option option) {
             divider.setVisibility(option.dividerBefore() ? VISIBLE : GONE);
+            icon.setImageResource(option.iconRes());
             title.setText(option.label());
             summary.setText(option.summary());
             summary.setVisibility(option.summary().isEmpty() ? GONE : VISIBLE);

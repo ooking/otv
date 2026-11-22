@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 final class XmlTvImporter {
+    static final String HONG_KONG_FEED = "https://epg.pw/xmltv/epg_HK.xml.gz";
+    private static final ZoneOffset HONG_KONG_OFFSET = ZoneOffset.ofHours(8);
     private static final long MAX_BYTES = 32 * 1024 * 1024;
     private static final int MAX_MATCHED_PROGRAMS = 50_000;
     private static final DateTimeFormatter MINUTES = DateTimeFormatter.ofPattern("uuuuMMddHHmm")
@@ -42,7 +44,7 @@ final class XmlTvImporter {
                                             long now) throws IOException, XmlPullParserException {
         InputStream source = resolver.openInputStream(uri);
         if (source == null) throw new IOException("Cannot open XMLTV");
-        return read(source, channels, now);
+        return read(source, channels, now, false);
     }
 
     static Map<String, List<Program>> download(URL url, List<Channel> channels, long now)
@@ -55,14 +57,15 @@ final class XmlTvImporter {
             if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException("XMLTV download returned a non-OK response");
             }
-            return read(connection.getInputStream(), channels, now);
+            return read(connection.getInputStream(), channels, now,
+                    HONG_KONG_FEED.equals(url.toExternalForm()));
         } finally {
             connection.disconnect();
         }
     }
 
     private static Map<String, List<Program>> read(InputStream source, List<Channel> channels,
-                                                   long now) throws IOException, XmlPullParserException {
+                                                   long now, boolean hongKongFeed) throws IOException, XmlPullParserException {
         Map<String, String> names = new HashMap<>();
         Set<String> ambiguousNames = new HashSet<>();
         for (Channel channel : channels) {
@@ -100,8 +103,8 @@ final class XmlTvImporter {
                     } else if ("programme".equals(parser.getName())) {
                         String key = feedChannels.get(parser.getAttributeValue(null, "channel"));
                         if (key == null) continue;
-                        long start = time(parser.getAttributeValue(null, "start"));
-                        long end = time(parser.getAttributeValue(null, "stop"));
+                        long start = time(parser.getAttributeValue(null, "start"), hongKongFeed);
+                        long end = time(parser.getAttributeValue(null, "stop"), hongKongFeed);
                         if (start == Long.MIN_VALUE || start >= now + GuideCache.WINDOW
                                 || end <= now || end <= start) continue;
                         Program program = readProgram(parser, start, end);
@@ -151,12 +154,16 @@ final class XmlTvImporter {
         return new Program(title, start, end, description);
     }
 
-    private static long time(String value) {
+    private static long time(String value, boolean hongKongFeed) {
         if (value == null) return Long.MIN_VALUE;
         try {
             String[] parts = value.trim().split("\\s+", 2);
             DateTimeFormatter formatter = parts[0].length() == 12 ? MINUTES : SECONDS;
             ZoneOffset offset = parts.length == 1 ? ZoneOffset.UTC : ZoneOffset.of(parts[1]);
+            // epg.pw HK publishes Hong Kong wall times with a literal +0000 suffix.
+            if (hongKongFeed && parts.length == 2 && "+0000".equals(parts[1])) {
+                offset = HONG_KONG_OFFSET;
+            }
             return LocalDateTime.parse(parts[0], formatter).toInstant(offset).toEpochMilli();
         } catch (java.time.DateTimeException invalid) {
             return Long.MIN_VALUE;

@@ -82,6 +82,7 @@ final class ChannelManageDialog extends Dialog {
 
         TextView titleView = style.text(22, 0xffffffff, true);
         titleView.setText("频道管理与排序");
+        style.setLeadingIcon(titleView, R.drawable.ic_channels, 20);
         titleLayout.addView(titleView);
 
         subtitleView = style.text(13, TvStyle.MUTED, false);
