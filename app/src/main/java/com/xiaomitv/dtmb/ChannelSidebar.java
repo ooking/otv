@@ -27,6 +27,7 @@ final class ChannelSidebar {
     private final TvStyle style;
     private final TvScreen.Actions actions;
     private final DateFormat timeFormat;
+    private final ChannelPreviews previews;
 
     // 顶部控制胶囊行 (图 2 胶囊条)
     private final LinearLayout controlsRow;
@@ -48,7 +49,8 @@ final class ChannelSidebar {
     private long playingId = -1;
     private long selectedId = -1;
 
-    ChannelSidebar(Context context, TvStyle style, TvScreen.Actions actions) {
+    ChannelSidebar(Context context, TvStyle style, TvScreen.Actions actions, ChannelPreviews previews) {
+        this.previews = previews;
         this.context = context;
         this.style = style;
         this.actions = actions;
@@ -241,7 +243,13 @@ final class ChannelSidebar {
             } else {
                 timeView.setText("当前时段");
             }
-            card.addView(timeView);
+            LinearLayout details = new LinearLayout(context);
+            details.setGravity(Gravity.CENTER_VERTICAL);
+            card.addView(details, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout labels = new LinearLayout(context);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            details.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+            labels.addView(timeView);
 
             TextView progView = style.text(13, 0xffdcdfe8, true);
             style.trim(progView, 1);
@@ -251,7 +259,16 @@ final class ChannelSidebar {
             } else {
                 progView.setText(isCurrentPlaying ? "正在播出" : "暂无节目资料");
             }
-            card.addView(progView);
+            labels.addView(progView);
+            android.graphics.Bitmap image = previews.get(channel);
+            if (image != null) {
+                android.widget.ImageView thumbnail = new android.widget.ImageView(context);
+                thumbnail.setImageBitmap(image);
+                thumbnail.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(style.dp(56), style.dp(32));
+                size.leftMargin = style.dp(6);
+                details.addView(thumbnail, size);
+            }
 
             // 动态焦点样式切换函数（彻底解决白底白字问题，确保高对比度）
             Runnable applyStyle = () -> {

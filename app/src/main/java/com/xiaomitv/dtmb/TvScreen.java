@@ -67,7 +67,7 @@ final class TvScreen {
     private View sidebarFocus;
     private int optionSelection;
 
-    TvScreen(Activity activity, Handler handler, Actions actions) {
+    TvScreen(Activity activity, Handler handler, Actions actions, ChannelPreviews previews) {
         this.activity = activity;
         style = new TvStyle(activity);
         root = new FrameLayout(activity);
@@ -94,7 +94,7 @@ final class TvScreen {
         root.addView(status, inset(new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL)));
         status.setVisibility(View.GONE);
 
-        sidebar = new ChannelSidebar(activity, style, actions);
+        sidebar = new ChannelSidebar(activity, style, actions, previews);
         root.addView(sidebar.view, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         sidebar.view.setVisibility(View.GONE);
 

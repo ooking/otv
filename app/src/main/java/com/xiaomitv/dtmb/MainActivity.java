@@ -77,6 +77,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private TvScreen screen;
     private Playback playback;
     private XiaomiAvSettings avSettings;
+    private ChannelPreviews previews;
     private MediaSession mediaSession;
     private SharedPreferences preferences;
     private Set<String> favorites = Collections.emptySet();
@@ -120,7 +121,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         favorites = new HashSet<>(preferences.getStringSet("favorites", Collections.emptySet()));
         hiddenChannels = ChannelManager.loadHidden(preferences);
         channelOrder = ChannelManager.loadOrder(preferences);
-        screen = new TvScreen(this, handler, this);
+        previews = new ChannelPreviews(handler);
+        screen = new TvScreen(this, handler, this, previews);
         avSettings = new XiaomiAvSettings(this, screen::hidePanels);
         guide = new ProgramGuide(this, listings, handler, this::renderGuide);
         playback = new Playback(screen.video, getSystemService(AudioManager.class), preferences, handler,
@@ -172,6 +174,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             mediaSession.release();
             mediaSession = null;
         }
+        previews.close();
         screen.finish();
         guide.close();
         queries.shutdownNow();
@@ -284,6 +287,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     @Override
     public void onTuning(long id, boolean switching) {
+        previews.cancel();
         guide.cancelTunedRefresh();
         if (switching) screen.beginTransition();
         TvListings.Channel target = findChannel(id);
@@ -309,10 +313,23 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!notice.isEmpty()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
         preferences.edit().putLong("last_channel", id).apply();
         guide.refreshAfterTune(ready);
+        if (playback.hasPreviewVideo(id)) {
+            previews.schedule(ready, () -> active && playback.hasPreviewVideo(id), this::renderChannels);
+        }
         screen.revealVideo();
         showProgram(ready, true, false);
         renderGuide();
         refreshOptions();
+    }
+
+    @Override
+    public void onPreviewInvalidated(long id, boolean blocked) {
+        previews.cancel();
+        if (blocked) {
+            TvListings.Channel channel = findChannel(id);
+            if (channel != null) previews.forget(channel);
+            renderChannels();
+        }
     }
 
     @Override
@@ -428,7 +445,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     audioTrackSummary(), this::showAudioTracks));
             items.add(new TvScreen.Option("字幕", R.drawable.ic_subtitles,
                     subtitleTrackSummary(), this::showSubtitleTracks));
-            if (avSettings.available) {
+            if (avSettings.available()) {
                 items.add(new TvScreen.Option("图像设置", R.drawable.ic_picture, avSettings::openPicture));
                 items.add(new TvScreen.Option("声音设置", R.drawable.ic_audio, avSettings::openSound));
             }

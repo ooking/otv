@@ -22,6 +22,7 @@ final class Playback {
         void onTuning(long channel, boolean switching);
         void onTuneReady(long channel, String notice);
         void onTuneFailed();
+        void onPreviewInvalidated(long channel, boolean blocked);
         void onTrackStateChanged();
         void onPlaybackActiveChanged(boolean active);
     }
@@ -84,6 +85,7 @@ final class Playback {
             @Override
             public void onVideoUnavailable(String inputId, int reason) {
                 if (!isActive(inputId) || contentBlocked || (tuning && !submitted)) return;
+                listener.onPreviewInvalidated(channelId, false);
                 videoAvailable = false;
                 audioOnly = reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY;
                 String message = switch (reason) {
@@ -120,6 +122,7 @@ final class Playback {
             @Override
             public void onContentBlocked(String inputId, android.media.tv.TvContentRating rating) {
                 if (!isActive(inputId) || (tuning && !submitted)) return;
+                listener.onPreviewInvalidated(channelId, true);
                 contentBlocked = true;
                 updatePlaybackActive(false);
                 String message = "此频道受系统家长控制限制";
@@ -249,6 +252,10 @@ final class Playback {
         return queuedChannel != -1 ? queuedChannel : tuning ? channelId : -1;
     }
 
+    boolean hasPreviewVideo(long id) {
+        return videoAvailable && isReady(id);
+    }
+
     boolean isReady(long id) {
         return channelId == id && !tuning && !contentBlocked && (videoAvailable || audioOnly);
     }
@@ -297,9 +304,13 @@ final class Playback {
 
     private void completeTune(String status) {
         finishRequest();
-        lastReadyChannel = channelId;
         long next = queuedChannel;
         queuedChannel = -1;
+        if (next != -1 && next != channelId) {
+            startTune(next);
+            return;
+        }
+        lastReadyChannel = channelId;
         long ready = channelId;
         String notice = recoveryMessage;
         recoveryMessage = "";
@@ -308,7 +319,7 @@ final class Playback {
         restoreSubtitles();
         updatePlaybackActive(videoAvailable || audioOnly);
         listener.onTuneReady(ready, notice);
-        if (!tuning && next != -1 && next != ready) startTune(next);
+
     }
 
     private void finishRequest() {
@@ -341,6 +352,7 @@ final class Playback {
     }
 
     void stop() {
+        listener.onPreviewInvalidated(channelId, false);
         ++tuneGeneration;
         finishRequest();
         lastReadyChannel = -1;

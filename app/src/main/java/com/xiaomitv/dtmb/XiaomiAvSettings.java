@@ -6,6 +6,8 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.util.Log;
 
 final class XiaomiAvSettings {
@@ -13,19 +15,20 @@ final class XiaomiAvSettings {
     private static final ComponentName SERVICE = new ComponentName(PACKAGE, PACKAGE + ".TvSettingService");
     private final Activity activity;
     private final Runnable onOpened;
-    final boolean available;
 
     XiaomiAvSettings(Activity activity, Runnable onOpened) {
         this.activity = activity;
         this.onOpened = onOpened;
-        boolean installed;
-        try {
-            ApplicationInfo info = activity.getPackageManager().getApplicationInfo(PACKAGE, 0);
-            installed = info.enabled && (info.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-        } catch (PackageManager.NameNotFoundException exception) {
-            installed = false;
-        }
-        available = installed;
+    }
+
+    boolean available() {
+        ResolveInfo resolved = activity.getPackageManager().resolveService(
+                new Intent().setComponent(SERVICE), 0);
+        if (resolved == null || resolved.serviceInfo == null) return false;
+        ServiceInfo info = resolved.serviceInfo;
+        return info.exported && (info.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0
+                && (info.permission == null || activity.checkSelfPermission(info.permission)
+                == PackageManager.PERMISSION_GRANTED);
     }
 
     void openPicture() {

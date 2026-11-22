@@ -32,6 +32,7 @@ final class ProgramGuide {
     private final TvListings listings;
     private final ContentResolver resolver;
     private final GuideCache cache;
+    private final MtkProgramListings mtk;
     private final Runnable onChange;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Runnable refresh = this::refresh;
@@ -56,6 +57,7 @@ final class ProgramGuide {
         this.listings = listings;
         this.onChange = onChange;
         resolver = context.getContentResolver();
+        mtk = new MtkProgramListings(resolver);
         cache = new GuideCache(context.getApplicationContext());
         worker.execute(this::publishCache);
     }
@@ -134,7 +136,7 @@ final class ProgramGuide {
         tunedQuery = signal;
         tunedAttempts++;
         worker.execute(() -> {
-            boolean currentFound = refreshSystem(Collections.singletonList(channel), signal);
+            boolean currentFound = refreshSystem(Collections.singletonList(channel), signal, true);
             handler.post(() -> {
                 if (tunedQuery != signal) return;
                 tunedQuery = null;
@@ -203,7 +205,7 @@ final class ProgramGuide {
         query = signal;
         lastRefresh = SystemClock.uptimeMillis();
         worker.execute(() -> {
-            refreshSystem(lineup, signal);
+            refreshSystem(lineup, signal, false);
             handler.post(() -> {
                 if (closed || query != signal) return;
                 query = null;
@@ -216,7 +218,7 @@ final class ProgramGuide {
         });
     }
 
-    private boolean refreshSystem(List<Channel> lineup, CancellationSignal signal) {
+    private boolean refreshSystem(List<Channel> lineup, CancellationSignal signal, boolean tuned) {
         try {
             signal.throwIfCanceled();
             long now = System.currentTimeMillis();
@@ -233,7 +235,20 @@ final class ProgramGuide {
                     if (row.start() <= now && now < row.end()) currentFound = true;
                 }
                 Log.d(TAG, "system_coverage channel=" + channel.id()
-                        + " rows=" + rows.size() + " last_end=" + until);
+                        + " rows=" + rows.size() + " last_end=" + until
+                        + " descriptions=" + rows.stream().filter(row -> !row.description().isEmpty()).count());
+            }
+            if (tuned) {
+                Channel channel = lineup.get(0);
+                List<Program> extra = mtk.read(channel, now, now + GuideCache.WINDOW, signal);
+                signal.throwIfCanceled();
+                if (!extra.isEmpty()) {
+                    cache.update(GuideCache.MTK, Collections.singletonMap(channel.guideKey(), extra), now);
+                    currentFound |= extra.stream().anyMatch(row -> row.start() <= now && now < row.end());
+                }
+                Log.d(TAG, "mtk_coverage channel=" + channel.id() + " rows=" + extra.size()
+                        + " last_end=" + extra.stream().mapToLong(Program::end).max().orElse(0)
+                        + " descriptions=" + extra.stream().filter(row -> !row.description().isEmpty()).count());
             }
             publishCache();
             return currentFound;

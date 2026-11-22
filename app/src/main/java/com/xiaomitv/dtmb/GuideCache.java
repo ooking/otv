@@ -21,6 +21,7 @@ final class GuideCache extends SQLiteOpenHelper {
     static final long WINDOW = TimeUnit.DAYS.toMillis(7);
     static final int SYSTEM = 0;
     static final int XMLTV = 1;
+    static final int MTK = 2;
 
     private static final int MAX_PROGRAMS = 2048;
     private static final Comparator<Program> BY_START = Comparator.comparingLong(Program::start)
@@ -47,12 +48,14 @@ final class GuideCache extends SQLiteOpenHelper {
     }
 
     Map<String, List<Program>> read(long now) {
-        Map<String, List<Program>> system = readSource(getReadableDatabase(), SYSTEM, now);
-        Map<String, List<Program>> xmltv = readSource(getReadableDatabase(), XMLTV, now);
-        for (Map.Entry<String, List<Program>> entry : system.entrySet()) {
-            xmltv.put(entry.getKey(), merge(xmltv.get(entry.getKey()), entry.getValue()));
+        SQLiteDatabase db = getReadableDatabase();
+        Map<String, List<Program>> guide = readSource(db, XMLTV, now);
+        for (int source : new int[]{MTK, SYSTEM}) {
+            for (Map.Entry<String, List<Program>> entry : readSource(db, source, now).entrySet()) {
+                guide.put(entry.getKey(), merge(guide.get(entry.getKey()), entry.getValue()));
+            }
         }
-        return xmltv;
+        return guide;
     }
 
     void update(int source, Map<String, List<Program>> incoming, long now) {
