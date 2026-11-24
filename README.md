@@ -69,3 +69,7 @@ adb -s <电视序列号> shell dumpsys audio
 - `XiaomiTvAudio` 管理小米音频兼容开关及固件参数。
 
 参考 [AOSP Live TV](https://android.googlesource.com/platform/packages/apps/TV/)、[Android 14 TvProvider](https://android.googlesource.com/platform/packages/providers/TvProvider/+/android-14.0.0_r1/src/com/android/providers/tv/TvProvider.java)、[TvView](https://developer.android.com/reference/android/media/tv/TvView) 与 [AudioManager.setParameters](https://developer.android.com/reference/android/media/AudioManager#setParameters(java.lang.String))。
+
+## 开源协议
+
+OTV 原创代码采用 [MIT 许可证](LICENSE)。Gradle Wrapper 等第三方组件遵循各自的许可证。
