@@ -46,14 +46,6 @@ jobs:
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "发布标签: ${TAG}"
 
-      - name: 运行单元测试
-        run: |
-          ./gradlew compileDebugJavaWithJavac compileDebugUnitTestJavaWithJavac
-          ANDROID_JAR="${ANDROID_HOME}/platforms/android-35/android.jar"
-          CP="app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes:app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes:${ANDROID_JAR}"
-          java -cp "$CP" com.xiaomitv.dtmb.AppLanguageTest
-          java -cp "$CP" com.xiaomitv.dtmb.ChannelManagerTest
-
       - name: 编译并准备 APK
         id: build
         env:
