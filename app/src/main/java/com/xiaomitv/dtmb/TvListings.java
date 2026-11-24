@@ -1,6 +1,7 @@
 package com.xiaomitv.dtmb;
 
 import android.content.ContentResolver;
+import android.content.Context;
 import android.database.Cursor;
 import android.media.tv.TvContract;
 import android.media.tv.TvContract.Channels;
@@ -59,10 +60,12 @@ final class TvListings {
         }
     }
 
+    private final Context context;
     private final ContentResolver resolver;
 
-    TvListings(ContentResolver resolver) {
-        this.resolver = resolver;
+    TvListings(Context context) {
+        this.context = context;
+        this.resolver = context.getContentResolver();
     }
 
     List<Channel> channels(CancellationSignal signal) {
@@ -79,7 +82,7 @@ final class TvListings {
 
                 long id = cursor.getLong(0);
                 Channel channel = new Channel(id, value(cursor.getString(1), ""),
-                        value(cursor.getString(2), "频道 " + id));
+                        value(cursor.getString(2), context.getString(R.string.default_channel_name, id)));
                 tunerChannels.add(channel);
                 String type = cursor.getString(3);
                 if (Channels.TYPE_DTMB.equals(type)) {

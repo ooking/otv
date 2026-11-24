@@ -32,27 +32,31 @@ final class XiaomiAvSettings {
     }
 
     void openPicture() {
-        open("图像设置", "DISPLAY_PARAMETER");
+        open(activity.getString(R.string.option_picture_settings), "DISPLAY_PARAMETER");
     }
 
     void openSound() {
         // Use the same model capability as the stock DTMB player when exposed by the firmware.
+        String soundTitle = activity.getString(R.string.option_sound_settings);
         try {
             Class<?> config = Class.forName("mitv.common.ConfigurationManager");
             Object manager = config.getMethod("getInstance").invoke(null);
             String capability = (String) config.getMethod("queryTvConfigByKey", String.class)
                     .invoke(manager, "dolby_effect_supported");
             if ("YES".equalsIgnoreCase(capability) || "NO".equalsIgnoreCase(capability)) {
-                open("声音设置", "YES".equalsIgnoreCase(capability) ? "DOLBY_POPUP" : "SOUND_EFFECT_POPUP");
+                open(soundTitle, "YES".equalsIgnoreCase(capability) ? "DOLBY_POPUP" : "SOUND_EFFECT_POPUP");
                 return;
             }
         } catch (ReflectiveOperationException | RuntimeException | LinkageError exception) {
             Log.d("XiaomiAvSettings", "Dolby capability unavailable", exception);
         }
-        new AlertDialog.Builder(activity).setTitle("声音设置")
-                .setItems(new String[]{"普通音效", "杜比音效"}, (dialog, index) ->
-                        open("声音设置", index == 0 ? "SOUND_EFFECT_POPUP" : "DOLBY_POPUP"))
-                .setNegativeButton("取消", null).show();
+        new AlertDialog.Builder(activity).setTitle(soundTitle)
+                .setItems(new String[]{
+                        activity.getString(R.string.xiaomi_av_standard),
+                        activity.getString(R.string.xiaomi_av_dolby)
+                }, (dialog, index) ->
+                        open(soundTitle, index == 0 ? "SOUND_EFFECT_POPUP" : "DOLBY_POPUP"))
+                .setNegativeButton(R.string.action_cancel, null).show();
     }
 
     private void open(String title, String action) {
@@ -67,7 +71,7 @@ final class XiaomiAvSettings {
             Log.w("XiaomiAvSettings", "Cannot start " + action, exception);
         }
         new AlertDialog.Builder(activity).setTitle(title)
-                .setMessage("当前系统未开放此入口，请在电视自带的直播应用中打开" + title + "。")
-                .setPositiveButton("关闭", null).show();
+                .setMessage(activity.getString(R.string.xiaomi_av_unavailable, title))
+                .setPositiveButton(R.string.action_close, null).show();
     }
 }

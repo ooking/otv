@@ -28,6 +28,7 @@ final class ProgramGuide {
     private static final long MIN_REFRESH_INTERVAL = 20_000;
     private static final long POLL_INTERVAL = 60_000;
 
+    private final Context context;
     private final Handler handler;
     private final TvListings listings;
     private final ContentResolver resolver;
@@ -53,6 +54,7 @@ final class ProgramGuide {
     private boolean refreshPending;
 
     ProgramGuide(Context context, TvListings listings, Handler handler, Runnable onChange) {
+        this.context = context;
         this.handler = handler;
         this.listings = listings;
         this.onChange = onChange;
@@ -174,15 +176,15 @@ final class ProgramGuide {
                 long now = System.currentTimeMillis();
                 Map<String, List<Program>> programs = source.read(lineup, now);
                 if (programs.isEmpty()) {
-                    message = "没有匹配到未来 7 天的节目，请核对 XMLTV 频道名称和日期。";
+                    message = context.getString(R.string.xmltv_result_no_match);
                 } else {
                     cache.update(GuideCache.XMLTV, programs, now);
                     publishCache();
-                    message = "已导入 " + programs.size() + " 个频道的节目表。";
+                    message = context.getString(R.string.xmltv_result_imported, programs.size());
                 }
             } catch (IOException | XmlPullParserException | RuntimeException failure) {
                 Log.w(TAG, "XMLTV import failed: " + failure.getClass().getSimpleName());
-                message = "无法导入节目表，请检查网络、文件或 HTTPS 网址。";
+                message = context.getString(R.string.xmltv_result_failed);
             }
             String outcome = message;
             handler.post(() -> {

@@ -155,8 +155,9 @@ final class ProgramOverlay extends LinearLayout {
         synopsis.setText(description);
         synopsis.setVisibility(description.isEmpty() ? GONE : VISIBLE);
 
-        String nextLabel = next == null ? "" : "随后播出: " + next.title();
-        String action = switching ? "正在调谐频道…" : description.isEmpty() ? "" : "按 [左键] 查看完整详情";
+        String nextLabel = next == null ? "" : activity.getString(R.string.overlay_next_program, next.title());
+        String action = switching ? activity.getString(R.string.overlay_tuning)
+                : description.isEmpty() ? "" : activity.getString(R.string.overlay_more_info);
         footer.setText(nextLabel.isEmpty() || action.isEmpty() ? action + nextLabel : action + "   |   " + nextLabel);
         footer.setVisibility(footer.length() == 0 ? GONE : VISIBLE);
     }
@@ -186,7 +187,7 @@ final class ProgramOverlay extends LinearLayout {
                 + (description.isEmpty() ? "" : "\n\n" + description));
         scroll.addView(content);
         new AlertDialog.Builder(activity).setTitle(program.title()).setView(scroll)
-                .setPositiveButton("返回", null).setOnDismissListener(dialog -> renewTimeout()).show();
+                .setPositiveButton(R.string.action_back, null).setOnDismissListener(dialog -> renewTimeout()).show();
     }
 
     void close() {

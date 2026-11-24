@@ -1,3 +1,185 @@
 <resources>
     <string name="app_name" translatable="false">OTV</string>
+
+    <!-- Common Actions -->
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_done">Done</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_disable">Disable</string>
+    <string name="action_import">Import</string>
+
+    <!-- Language Settings -->
+    <string name="option_language">Language</string>
+    <string name="language_dialog_title">Language</string>
+    <string name="language_follow_system">Follow system</string>
+    <string name="language_summary_system">System (%1$s)</string>
+
+    <!-- Options Panel -->
+    <string name="options_title">Settings &amp; Options</string>
+    <string name="options_subtitle">Press OK to select · Back to close</string>
+    <string name="options_footer">OTV · DTMB Playback Engine</string>
+    <string name="option_audio_tracks">Audio &amp; Tracks</string>
+    <string name="option_subtitles">Subtitles</string>
+    <string name="option_picture_settings">Picture Settings</string>
+    <string name="option_sound_settings">Sound Settings</string>
+    <string name="option_favorite_add">Add to Favorites</string>
+    <string name="option_favorite_remove">Remove from Favorites</string>
+    <string name="option_hide_channel">Hide Current Channel</string>
+    <string name="option_unhide_channel">Unhide Current Channel</string>
+    <string name="option_channel_manager">Channel Manager (Sort &amp; Hide)</string>
+    <string name="option_grant_listings_permission">Grant TV Listings Permission</string>
+    <string name="option_xiaomi_scan">Scan Channels in Xiaomi Live TV</string>
+    <string name="option_xiaomi_scan_summary">Open DTMB TV, then press Menu to scan</string>
+    <string name="option_import_xmltv">Import XMLTV Guide</string>
+    <string name="option_audio_diagnostics">Audio Diagnostics</string>
+    <string name="option_xiaomi_audio_on">Xiaomi Audio Compatibility · On</string>
+    <string name="option_xiaomi_audio_off">Xiaomi Audio Compatibility · Off</string>
+
+    <!-- Channel Sidebar & Empty States -->
+    <string name="sidebar_all_channels">All Channels</string>
+    <string name="sidebar_guide">Program Guide (EPG)</string>
+    <string name="sidebar_options">Settings</string>
+    <string name="sidebar_filter_favorites">Channels: Favorites</string>
+    <string name="sidebar_filter_all">Channels: All</string>
+    <string name="badge_playing">● Playing</string>
+    <string name="sidebar_current_slot">Current</string>
+    <string name="sidebar_on_air">On Air</string>
+    <string name="sidebar_no_program">No program info</string>
+    <string name="empty_loading_channels">Loading channels…</string>
+    <string name="empty_no_tuner">MediaTek tuner input not found on this Xiaomi TV.</string>
+    <string name="empty_no_permission">Please grant TV Listings permission in Options. If previously denied, enable it in system App Info.</string>
+    <string name="empty_no_dtmb_channels">No readable DTMB channels found. Please scan channels in Xiaomi Live TV first, then return to OTV.</string>
+    <string name="empty_listings_unreadable">Unable to read system channel data. Please check TV Listings permission and try again.</string>
+    <string name="status_channel_load_failed">Failed to load channels. Reopen OTV to retry.</string>
+    <string name="empty_all_hidden">All channels are hidden. Restore them in Options → Channel Manager.</string>
+    <string name="empty_no_favorites">No favorite channels yet.</string>
+    <string name="default_channel_name">Channel %1$d</string>
+
+    <!-- Channel Manager Dialog -->
+    <string name="channel_mgr_title">Channel Manager &amp; Sorting</string>
+    <string name="channel_mgr_reset_order">Reset Order</string>
+    <string name="channel_mgr_restore_all">Show All</string>
+    <string name="channel_mgr_hint">[Controls] ↑/↓ Focus   ← Move Up   → Move Down   OK Menu   Back Save &amp; Exit</string>
+    <string name="channel_mgr_subtitle">%1$d channels · %2$d hidden</string>
+    <string name="channel_mgr_toast_restored">Restored: %1$s</string>
+    <string name="channel_mgr_toast_hidden">Hidden: %1$s</string>
+    <string name="channel_mgr_toast_hidden_hint">Hidden: %1$s. Restore in Channel Manager.</string>
+    <string name="channel_mgr_toast_empty">No channels to manage</string>
+    <string name="channel_mgr_toast_order_reset">Restored default channel order</string>
+    <string name="channel_mgr_restore_all_title">Show All Channels</string>
+    <string name="channel_mgr_restore_all_msg">Restore all hidden TV channels?</string>
+    <string name="channel_mgr_toast_all_restored">All channels are now visible</string>
+    <string name="channel_mgr_reset_title">Reset Channel Order</string>
+    <string name="channel_mgr_reset_msg">Clear custom order and restore system default channel numbers?</string>
+    <string name="channel_mgr_reset_confirm">Reset</string>
+    <string name="channel_mgr_action_unhide">Show this channel</string>
+    <string name="channel_mgr_action_hide">Hide this channel</string>
+    <string name="channel_mgr_action_move_up">Move up (↑)</string>
+    <string name="channel_mgr_action_move_down">Move down (↓)</string>
+    <string name="channel_mgr_action_move_top">Move to top</string>
+    <string name="channel_mgr_action_move_bottom">Move to bottom</string>
+    <string name="channel_mgr_action_unfavorite">Remove from favorites</string>
+    <string name="channel_mgr_action_favorite">Add to favorites</string>
+    <string name="channel_mgr_badge_fav">★ Fav</string>
+    <string name="channel_mgr_badge_hidden">Hidden</string>
+    <string name="channel_mgr_row_hint">← Up / Down →</string>
+
+    <!-- Program Overlay & Guide Grid -->
+    <string name="overlay_next_program">Up next: %1$s</string>
+    <string name="overlay_tuning">Tuning channel…</string>
+    <string name="overlay_more_info">Press [Left] for full details</string>
+    <string name="guide_live_tag">LIVE</string>
+    <string name="guide_cell_live_tag">[LIVE]</string>
+    <string name="guide_group_favorites">Favorites</string>
+    <string name="guide_group_all">All Channels</string>
+    <string name="guide_duration_minutes">(%1$d min)</string>
+    <string name="guide_no_description">No detailed description available.</string>
+    <string name="guide_no_epg_slot">No broadcast schedule or EPG data available for this time slot.</string>
+    <string name="guide_ruler_time">Time</string>
+    <string name="guide_clock_format">yyyy/MM/dd (E) HH:mm</string>
+    <string name="guide_hour_format">HH:00</string>
+
+    <!-- Audio & Subtitles -->
+    <string name="audio_summary_none">No audio tracks available</string>
+    <string name="audio_summary_unreported">Current track not reported</string>
+    <string name="audio_dialog_empty">No audio tracks reported for this program yet. Try again once video is ready.</string>
+    <string name="audio_toast_changed">Audio tracks changed. Please reopen the menu.</string>
+    <string name="subtitle_summary_none">No subtitles available</string>
+    <string name="subtitle_off">Subtitles Off</string>
+    <string name="subtitle_dialog_title">Broadcast Subtitles</string>
+    <string name="subtitle_system_style">System Caption Style</string>
+    <string name="subtitle_dialog_empty">No selectable subtitle tracks reported for this program. Burned-in subtitles appear with the video.</string>
+    <string name="subtitle_toast_changed">Subtitle tracks changed. Please reopen the menu.</string>
+    <string name="caption_style_msg">System style applies to content supporting Android caption preferences. DTMB broadcast subtitles are rendered by the TV tuner and depend on the broadcast and firmware.</string>
+    <string name="caption_style_open_settings">Open System Settings</string>
+    <string name="caption_style_unavailable">This TV does not provide Android caption style settings.</string>
+    <string name="track_audio_label">Audio %1$d</string>
+    <string name="track_channels">%1$d ch</string>
+    <string name="track_subtitle_label">Subtitle %1$d</string>
+    <string name="lang_chinese">Chinese</string>
+    <string name="lang_zh_hans">Simplified Chinese</string>
+    <string name="lang_zh_hant">Traditional Chinese</string>
+    <string name="lang_english">English</string>
+    <string name="lang_cantonese">Cantonese</string>
+    <string name="lang_mandarin">Mandarin</string>
+
+    <!-- XMLTV Import -->
+    <string name="xmltv_toast_importing">Importing program guide…</string>
+    <string name="xmltv_toast_downloading">Downloading program guide…</string>
+    <string name="xmltv_source_hk">Hong Kong Guide (epg.pw)</string>
+    <string name="xmltv_source_hoy">HOY Supplement Guide</string>
+    <string name="xmltv_source_url">Enter HTTPS URL</string>
+    <string name="xmltv_source_local">Choose Local File</string>
+    <string name="xmltv_url_title">XMLTV URL</string>
+    <string name="xmltv_result_title">Import XMLTV</string>
+    <string name="xmltv_err_direct_https">Please enter a directly accessible HTTPS guide URL.</string>
+    <string name="xmltv_err_valid_https">Please enter a valid HTTPS guide URL.</string>
+    <string name="xmltv_err_no_picker">No system file picker is available on this TV.</string>
+    <string name="xmltv_result_no_match">No programs matched for the next 7 days. Please check XMLTV channel names and dates.</string>
+    <string name="xmltv_result_imported">Imported guide for %1$d channels.</string>
+    <string name="xmltv_result_failed">Unable to import program guide. Please check your network, file, or HTTPS URL.</string>
+
+    <!-- Xiaomi Settings & Diagnostics -->
+    <string name="xiaomi_av_standard">Standard Sound</string>
+    <string name="xiaomi_av_dolby">Dolby Sound</string>
+    <string name="xiaomi_av_unavailable">This entry is not exposed by the firmware. Please open %1$s in the built-in Live TV app.</string>
+    <string name="xiaomi_scan_unavailable">This firmware cannot open DTMB directly. Please switch to the DTMB input source and press Menu to scan. OTV will load channels automatically when you return.</string>
+    <string name="xiaomi_audio_title">Xiaomi Audio Compatibility</string>
+    <string name="xiaomi_audio_msg">For Xiaomi TVs where DTMB has video but no sound. Controls TV input audio based on audio focus and media mute state during playback.</string>
+    <string name="diag_retry_audio">Retry Audio</string>
+    <string name="diag_report">Playback State  %1$s\nKeep Screen On  %2$s\nAudio Focus  %3$s\nTIF Volume  %4$s\nReported Audio Tracks  %5$d\n%6$s\nConfirm audio output directly on the TV.</string>
+    <string name="diag_keep_on_enabled">On (prevents sleep &amp; screensaver)</string>
+    <string name="diag_keep_on_disabled">Off</string>
+    <string name="diag_no_session">No session</string>
+    <string name="diag_xiaomi_audio">Xiaomi Audio Compat  %1$s\nLast Vendor Audio Request  %2$s\n</string>
+    <string name="diag_enabled">On</string>
+    <string name="diag_disabled">Off</string>
+    <string name="diag_not_sent">Not sent</string>
+    <string name="diag_rejected">Rejected: %1$s</string>
+
+    <!-- Playback Status -->
+    <string name="playback_not_playing">Not playing</string>
+    <string name="playback_video_ready">Video ready</string>
+    <string name="playback_tuning">Switching channel…</string>
+    <string name="playback_connecting">Connecting to live signal…</string>
+    <string name="playback_weak_signal">Weak DTMB signal</string>
+    <string name="playback_buffering">Waiting for live signal…</string>
+    <string name="playback_audio_only">Audio-only program</string>
+    <string name="playback_insufficient_resource">Insufficient tuner resources. Close other TV apps and retry.</string>
+    <string name="playback_no_video">No video available</string>
+    <string name="playback_conn_failed">Unable to connect to TV tuner</string>
+    <string name="playback_disconnected">TV tuner disconnected</string>
+    <string name="playback_content_blocked">This channel is restricted by parental controls</string>
+    <string name="playback_tune_rejected">System rejected tuning. Check channel and input source.</string>
+    <string name="playback_recovered">Channel switch failed; returned to previous channel</string>
+    <string name="playback_tune_timeout">Tuning timed out. Retry from the menu.</string>
+    <string name="playback_video_height">%1$dp</string>
+    <string name="focus_not_requested">Not requested</string>
+    <string name="focus_granted">Granted</string>
+    <string name="focus_delayed">Pending system allocation</string>
+    <string name="focus_denied">Denied by system</string>
+    <string name="focus_lost">Lost</string>
 </resources>

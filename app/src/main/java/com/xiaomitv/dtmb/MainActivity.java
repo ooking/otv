@@ -3,6 +3,7 @@ package com.xiaomitv.dtmb;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -92,11 +93,17 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private boolean resumePlayback;
     private boolean observing;
     private boolean onlyFavorites;
-    private String emptyMessage = "正在读取频道…";
+    private String emptyMessage = "";
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(AppLanguage.wrap(newBase));
+    }
 
     @Override
     public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
+        emptyMessage = getString(R.string.empty_loading_channels);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         mediaSession = new MediaSession(this, TAG);
         mediaSession.setCallback(new MediaSession.Callback() {
@@ -116,7 +123,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             }
         });
         inputs = getSystemService(TvInputManager.class);
-        listings = new TvListings(getContentResolver());
+        listings = new TvListings(this);
         preferences = getSharedPreferences("live_tv", MODE_PRIVATE);
         favorites = new HashSet<>(preferences.getStringSet("favorites", Collections.emptySet()));
         hiddenChannels = ChannelManager.loadHidden(preferences);
@@ -199,7 +206,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (request != XMLTV_REQUEST || result != RESULT_OK || data == null) return;
         Uri uri = data.getData();
         if (uri == null || !"content".equals(uri.getScheme())) return;
-        Toast.makeText(this, "正在导入节目表…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.xmltv_toast_importing, Toast.LENGTH_SHORT).show();
         guide.importXmlTv(uri, this::showImportResult);
     }
 
@@ -441,51 +448,82 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private List<TvScreen.Option> optionItems() {
         List<TvScreen.Option> items = new ArrayList<>();
         if (current != null) {
-            items.add(new TvScreen.Option("声道与音轨", R.drawable.ic_audio,
+            items.add(new TvScreen.Option(getString(R.string.option_audio_tracks), R.drawable.ic_audio,
                     audioTrackSummary(), this::showAudioTracks));
-            items.add(new TvScreen.Option("字幕", R.drawable.ic_subtitles,
+            items.add(new TvScreen.Option(getString(R.string.option_subtitles), R.drawable.ic_subtitles,
                     subtitleTrackSummary(), this::showSubtitleTracks));
             if (avSettings.available()) {
-                items.add(new TvScreen.Option("图像设置", R.drawable.ic_picture, avSettings::openPicture));
-                items.add(new TvScreen.Option("声音设置", R.drawable.ic_audio, avSettings::openSound));
+                items.add(new TvScreen.Option(getString(R.string.option_picture_settings),
+                        R.drawable.ic_picture, avSettings::openPicture));
+                items.add(new TvScreen.Option(getString(R.string.option_sound_settings),
+                        R.drawable.ic_audio, avSettings::openSound));
             }
-            String favorite = favorites.contains(Long.toString(current.id()))
-                    ? "取消收藏当前频道" : "收藏当前频道";
+            String favorite = getString(favorites.contains(Long.toString(current.id()))
+                    ? R.string.option_favorite_remove : R.string.option_favorite_add);
             items.add(new TvScreen.Option(favorite, R.drawable.ic_favorite, this::favorite));
-            String hideLabel = hiddenChannels.contains(Long.toString(current.id()))
-                    ? "恢复当前频道显示" : "隐藏当前频道";
+            String hideLabel = getString(hiddenChannels.contains(Long.toString(current.id()))
+                    ? R.string.option_unhide_channel : R.string.option_hide_channel);
             items.add(new TvScreen.Option(hideLabel, R.drawable.ic_visibility, this::toggleCurrentChannelHidden));
         }
-        items.add(new TvScreen.Option("频道管理（排序与隐藏）", R.drawable.ic_channels,
+        items.add(new TvScreen.Option(getString(R.string.option_channel_manager), R.drawable.ic_channels,
                 "", current != null, this::openChannelManager));
+        items.add(new TvScreen.Option(getString(R.string.option_language), R.drawable.ic_language,
+                AppLanguage.summary(this), this::showLanguageSettings));
         if (!canReadListings()) {
-            items.add(new TvScreen.Option("授予电视节目权限", R.drawable.ic_guide, this::requestListingsPermission));
+            items.add(new TvScreen.Option(getString(R.string.option_grant_listings_permission),
+                    R.drawable.ic_guide, this::requestListingsPermission));
         }
-        items.add(new TvScreen.Option("前往小米直播搜台", R.drawable.ic_settings,
-                "打开地面数字电视后，按菜单键选择搜台", false, this::openSetup));
+        items.add(new TvScreen.Option(getString(R.string.option_xiaomi_scan), R.drawable.ic_settings,
+                getString(R.string.option_xiaomi_scan_summary), false, this::openSetup));
         if (current != null) {
-            items.add(new TvScreen.Option("导入 XMLTV 节目表", R.drawable.ic_import, this::chooseXmlTvSource));
-            items.add(new TvScreen.Option("音频诊断", R.drawable.ic_audio, this::showAudioDiagnostics));
+            items.add(new TvScreen.Option(getString(R.string.option_import_xmltv),
+                    R.drawable.ic_import, this::chooseXmlTvSource));
+            items.add(new TvScreen.Option(getString(R.string.option_audio_diagnostics),
+                    R.drawable.ic_audio, this::showAudioDiagnostics));
         }
         if (playback.supportsXiaomiAudio()) {
-            String label = "小米音频兼容" + (playback.xiaomiAudioEnabled() ? " · 开启" : " · 关闭");
+            String label = getString(playback.xiaomiAudioEnabled()
+                    ? R.string.option_xiaomi_audio_on : R.string.option_xiaomi_audio_off);
             items.add(new TvScreen.Option(label, R.drawable.ic_audio, this::showXiaomiAudioSetting));
         }
         return items;
     }
 
+    private void showLanguageSettings() {
+        String currentTag = AppLanguage.savedTag(this);
+        String[] labels = new String[AppLanguage.OPTIONS.length];
+        int selected = 0;
+        for (int i = 0; i < AppLanguage.OPTIONS.length; i++) {
+            String tag = AppLanguage.OPTIONS[i];
+            labels[i] = AppLanguage.optionLabel(this, tag);
+            if (tag.equals(currentTag)) selected = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.language_dialog_title)
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    dialog.dismiss();
+                    AppLanguage.apply(this, AppLanguage.OPTIONS[which]);
+                })
+                .setNegativeButton(R.string.action_cancel, null)
+                .show();
+    }
+
     private String audioTrackSummary() {
         List<TvTrackInfo> tracks = playback.audioTracks();
-        if (tracks.isEmpty()) return "暂无可用音轨";
+        if (tracks.isEmpty()) return getString(R.string.audio_summary_none);
         int selected = TrackLabels.selectedIndex(tracks, playback.selectedAudioTrack());
-        return selected >= 0 ? TrackLabels.label(tracks.get(selected), selected) : "未报告当前音轨";
+        return selected >= 0
+                ? TrackLabels.label(this, tracks.get(selected), selected)
+                : getString(R.string.audio_summary_unreported);
     }
 
     private String subtitleTrackSummary() {
         List<TvTrackInfo> tracks = playback.subtitleTracks();
-        if (tracks.isEmpty()) return "暂无可选字幕";
+        if (tracks.isEmpty()) return getString(R.string.subtitle_summary_none);
         int selected = TrackLabels.selectedIndex(tracks, playback.selectedSubtitleTrack());
-        return selected >= 0 ? TrackLabels.subtitleLabel(tracks.get(selected), selected) : "关闭字幕";
+        return selected >= 0
+                ? TrackLabels.subtitleLabel(this, tracks.get(selected), selected)
+                : getString(R.string.subtitle_off);
     }
 
     private void toggleCurrentChannelHidden() {
@@ -493,10 +531,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         String idStr = Long.toString(current.id());
         if (hiddenChannels.contains(idStr)) {
             hiddenChannels.remove(idStr);
-            Toast.makeText(this, "已恢复显示：" + current.name(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.channel_mgr_toast_restored, current.name()),
+                    Toast.LENGTH_SHORT).show();
         } else {
             hiddenChannels.add(idStr);
-            Toast.makeText(this, "已隐藏频道：" + current.name() + "，可从「频道管理」恢复", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.channel_mgr_toast_hidden_hint, current.name()),
+                    Toast.LENGTH_SHORT).show();
         }
         ChannelManager.saveHidden(preferences, hiddenChannels);
         reapplyChannels();
@@ -504,7 +544,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void openChannelManager() {
         if (allChannels.isEmpty() && rawChannels.isEmpty()) {
-            Toast.makeText(this, "暂无频道可供管理", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.channel_mgr_toast_empty, Toast.LENGTH_SHORT).show();
             return;
         }
         screen.hidePanels();
@@ -526,7 +566,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                 channelOrder = Collections.emptyList();
                 ChannelManager.saveOrder(preferences, channelOrder);
                 reapplyChannels();
-                Toast.makeText(MainActivity.this, "已恢复系统默认排序", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, R.string.channel_mgr_toast_order_reset, Toast.LENGTH_SHORT).show();
             }
         });
         dialog.show();
@@ -534,23 +574,23 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void showSubtitleTracks() {
         List<TvTrackInfo> tracks = playback.subtitleTracks();
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("广播字幕")
-                .setNegativeButton("返回", null)
-                .setNeutralButton("系统字幕样式", (view, which) -> showCaptionStyleSettings());
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(R.string.subtitle_dialog_title)
+                .setNegativeButton(R.string.action_back, null)
+                .setNeutralButton(R.string.subtitle_system_style, (view, which) -> showCaptionStyleSettings());
         if (tracks.isEmpty()) {
-            dialog.setMessage("当前节目没有报告可选的字幕轨。画面中的内嵌字幕随节目播出。");
+            dialog.setMessage(R.string.subtitle_dialog_empty);
         } else {
             String[] labels = new String[tracks.size() + 1];
-            labels[0] = "关闭字幕";
+            labels[0] = getString(R.string.subtitle_off);
             int selected = TrackLabels.selectedIndex(tracks, playback.selectedSubtitleTrack()) + 1;
             long channel = playback.channelId();
             for (int index = 0; index < tracks.size(); index++) {
-                labels[index + 1] = TrackLabels.subtitleLabel(tracks.get(index), index);
+                labels[index + 1] = TrackLabels.subtitleLabel(this, tracks.get(index), index);
             }
             dialog.setSingleChoiceItems(labels, selected, (view, index) -> {
                 TvTrackInfo track = index == 0 ? null : tracks.get(index - 1);
                 if (!playback.selectSubtitleTrack(channel, track)) {
-                    Toast.makeText(this, "字幕轨已变化，请重新打开菜单。", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.subtitle_toast_changed, Toast.LENGTH_SHORT).show();
                 }
                 view.dismiss();
             });
@@ -559,24 +599,27 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     }
 
     private void showCaptionStyleSettings() {
-        new AlertDialog.Builder(this).setTitle("系统字幕样式")
-                .setMessage("系统样式适用于支持 Android 字幕偏好的内容。"
-                        + "DTMB 广播字幕由电视调谐器绘制，样式取决于节目和固件。")
-                .setPositiveButton("打开系统设置", (dialog, which) -> {
+        new AlertDialog.Builder(this).setTitle(R.string.subtitle_system_style)
+                .setMessage(R.string.caption_style_msg)
+                .setPositiveButton(R.string.caption_style_open_settings, (dialog, which) -> {
                     try {
                         startActivity(new Intent(Settings.ACTION_CAPTIONING_SETTINGS));
                     } catch (ActivityNotFoundException | SecurityException exception) {
-                        new AlertDialog.Builder(this).setTitle("系统字幕样式")
-                                .setMessage("此电视未提供 Android 字幕样式设置入口。")
-                                .setPositiveButton("关闭", null).show();
+                        new AlertDialog.Builder(this).setTitle(R.string.subtitle_system_style)
+                                .setMessage(R.string.caption_style_unavailable)
+                                .setPositiveButton(R.string.action_close, null).show();
                     }
-                }).setNegativeButton("取消", null).show();
+                }).setNegativeButton(R.string.action_cancel, null).show();
     }
 
     private void chooseXmlTvSource() {
-        new AlertDialog.Builder(this).setTitle("导入 XMLTV 节目表")
-                .setItems(new String[]{"香港节目源（epg.pw）", "HOY 补充节目源",
-                                "输入 HTTPS 网址", "选择本地文件"},
+        new AlertDialog.Builder(this).setTitle(R.string.option_import_xmltv)
+                .setItems(new String[]{
+                                getString(R.string.xmltv_source_hk),
+                                getString(R.string.xmltv_source_hoy),
+                                getString(R.string.xmltv_source_url),
+                                getString(R.string.xmltv_source_local)
+                        },
                         (dialog, which) -> {
                             switch (which) {
                                 case 0 -> downloadXmlTv(XmlTvImporter.HONG_KONG_FEED);
@@ -587,7 +630,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                                 default -> { }
                             }
                         })
-                .setNegativeButton("取消", null).show();
+                .setNegativeButton(R.string.action_cancel, null).show();
     }
 
     private void askXmlTvUrl() {
@@ -596,10 +639,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         field.setHint("https://…");
         field.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_VARIATION_URI);
-        new AlertDialog.Builder(this).setTitle("XMLTV 网址").setView(field)
-                .setPositiveButton("导入", (dialog, which) ->
+        new AlertDialog.Builder(this).setTitle(R.string.xmltv_url_title).setView(field)
+                .setPositiveButton(R.string.action_import, (dialog, which) ->
                         downloadXmlTv(field.getText().toString().trim()))
-                .setNegativeButton("取消", null).show();
+                .setNegativeButton(R.string.action_cancel, null).show();
     }
 
     private void downloadXmlTv(String address) {
@@ -607,19 +650,19 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             URI uri = new URI(address);
             if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
                     || uri.getUserInfo() != null) {
-                showImportResult("请输入可直接访问的 HTTPS 节目表网址。");
+                showImportResult(getString(R.string.xmltv_err_direct_https));
                 return;
             }
             guide.downloadXmlTv(uri.toURL(), this::showImportResult);
-            Toast.makeText(this, "正在下载节目表…", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.xmltv_toast_downloading, Toast.LENGTH_SHORT).show();
         } catch (URISyntaxException | MalformedURLException exception) {
-            showImportResult("请输入有效的 HTTPS 节目表网址。");
+            showImportResult(getString(R.string.xmltv_err_valid_https));
         }
     }
 
     private void showImportResult(String message) {
-        new AlertDialog.Builder(this).setTitle("导入 XMLTV")
-                .setMessage(message).setPositiveButton("关闭", null).show();
+        new AlertDialog.Builder(this).setTitle(R.string.xmltv_result_title)
+                .setMessage(message).setPositiveButton(R.string.action_close, null).show();
     }
 
     private void openXmlTv() {
@@ -628,28 +671,28 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         try {
             startActivityForResult(picker, XMLTV_REQUEST);
         } catch (ActivityNotFoundException exception) {
-            new AlertDialog.Builder(this).setTitle("导入 XMLTV")
-                    .setMessage("此电视没有可用的系统文件选择器。")
-                    .setPositiveButton("关闭", null).show();
+            new AlertDialog.Builder(this).setTitle(R.string.xmltv_result_title)
+                    .setMessage(R.string.xmltv_err_no_picker)
+                    .setPositiveButton(R.string.action_close, null).show();
         }
     }
 
     private void showAudioTracks() {
         List<TvTrackInfo> tracks = playback.audioTracks();
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("声道与音轨")
-                .setNegativeButton("关闭", null);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(R.string.option_audio_tracks)
+                .setNegativeButton(R.string.action_close, null);
         if (tracks.isEmpty()) {
-            dialog.setMessage("当前节目尚未报告可用音轨。画面就绪后可再打开菜单。");
+            dialog.setMessage(R.string.audio_dialog_empty);
         } else {
             String[] labels = new String[tracks.size()];
             int selected = TrackLabels.selectedIndex(tracks, playback.selectedAudioTrack());
             long channel = playback.channelId();
             for (int index = 0; index < tracks.size(); index++) {
-                labels[index] = TrackLabels.label(tracks.get(index), index);
+                labels[index] = TrackLabels.label(this, tracks.get(index), index);
             }
             dialog.setSingleChoiceItems(labels, selected, (view, index) -> {
                 if (!playback.selectAudioTrack(channel, tracks.get(index).getId())) {
-                    Toast.makeText(this, "音轨已变化，请重新打开菜单。", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.audio_toast_changed, Toast.LENGTH_SHORT).show();
                 }
                 view.dismiss();
             });
@@ -662,10 +705,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     }
 
     private void showAudioDiagnostics() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("音频诊断")
-                .setMessage(playback.diagnostics()).setNegativeButton("关闭", null);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(R.string.option_audio_diagnostics)
+                .setMessage(playback.diagnostics()).setNegativeButton(R.string.action_close, null);
         if (playback.channelId() != -1) {
-            dialog.setPositiveButton("重试音频", (view, which) -> {
+            dialog.setPositiveButton(R.string.diag_retry_audio, (view, which) -> {
                 playback.retryVolume();
                 showAudioDiagnostics();
             });
@@ -675,14 +718,14 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void showXiaomiAudioSetting() {
         boolean enable = !playback.xiaomiAudioEnabled();
-        new AlertDialog.Builder(this).setTitle("小米音频兼容")
-                .setMessage("用于小米电视 DTMB 有画面但无声的情况。播放时按音频焦点和媒体静音状态控制电视输入音频。")
-                .setPositiveButton(enable ? "开启" : "关闭", (dialog, which) -> {
+        new AlertDialog.Builder(this).setTitle(R.string.xiaomi_audio_title)
+                .setMessage(R.string.xiaomi_audio_msg)
+                .setPositiveButton(enable ? R.string.action_enable : R.string.action_disable, (dialog, which) -> {
                     playback.setXiaomiAudioEnabled(enable);
                     preferences.edit().putBoolean("xiaomi_audio", enable).apply();
                     refreshOptions();
                 })
-                .setNegativeButton("取消", null).show();
+                .setNegativeButton(R.string.action_cancel, null).show();
     }
 
     private void openSetup() {
@@ -693,10 +736,9 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.hidePanels();
         } catch (ActivityNotFoundException | SecurityException exception) {
             Log.i(TAG, "Xiaomi DTMB activity unavailable", exception);
-            new AlertDialog.Builder(this).setTitle("前往小米直播搜台")
-                    .setMessage("此固件无法直接打开地面数字电视。请从电视的输入源进入地面数字电视，"
-                            + "按菜单键选择搜台。回到 OTV 后会自动读取频道。")
-                    .setPositiveButton("关闭", null).show();
+            new AlertDialog.Builder(this).setTitle(R.string.option_xiaomi_scan)
+                    .setMessage(R.string.xiaomi_scan_unavailable)
+                    .setPositiveButton(R.string.action_close, null).show();
         }
     }
 
@@ -732,11 +774,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!active) return;
         cancelChannelQuery();
         if (findInput() == null) {
-            applyChannels(Collections.emptyList(), "未发现小米电视的 MediaTek 调谐器输入。");
+            applyChannels(Collections.emptyList(), getString(R.string.empty_no_tuner));
             return;
         }
         if (!canReadListings()) {
-            applyChannels(Collections.emptyList(), "请在「选项」中授予电视节目权限。曾拒绝授权时，可从系统应用详情开启。");
+            applyChannels(Collections.emptyList(), getString(R.string.empty_no_permission));
             return;
         }
 
@@ -749,7 +791,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channelQuery != signal || !active) return;
                     channelQuery = null;
                     Log.i(TAG, "visible_channels=" + result.size());
-                    applyChannels(result, "没有可读取的 DTMB 频道。请先在小米电视自带的直播应用中搜台，返回后会自动读取频道。");
+                    applyChannels(result, getString(R.string.empty_no_dtmb_channels));
                 });
             } catch (OperationCanceledException ignored) {
                 // A newer request or a lifecycle change replaced this query.
@@ -759,9 +801,9 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channelQuery != signal || !active) return;
                     channelQuery = null;
                     if (channels.isEmpty() || failure instanceof SecurityException) {
-                        applyChannels(Collections.emptyList(), "系统频道数据不可读，请检查电视节目权限后重试。");
+                        applyChannels(Collections.emptyList(), getString(R.string.empty_listings_unreadable));
                     } else {
-                        screen.status("频道读取失败，重新进入 OTV 可重试");
+                        screen.status(getString(R.string.status_channel_load_failed));
                     }
                 });
             }
@@ -796,7 +838,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.clearTransition();
             screen.closeGuide();
             refreshOptions();
-            emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
+            emptyMessage = getString(R.string.empty_all_hidden);
             renderChannels();
             if (!screen.panelOpen()) screen.showChannels();
             return;
@@ -829,7 +871,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.clearTransition();
             screen.closeGuide();
             refreshOptions();
-            emptyMessage = "所有频道均已隐藏，可在「选项」-「频道管理」中恢复。";
+            emptyMessage = getString(R.string.empty_all_hidden);
             renderChannels();
             return;
         }
@@ -924,7 +966,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void renderChannels() {
         List<TvListings.Channel> visible = visibleChannels();
-        String message = channels.isEmpty() ? emptyMessage : "还没有收藏频道。";
+        String message = channels.isEmpty() ? emptyMessage : getString(R.string.empty_no_favorites);
         long now = System.currentTimeMillis();
         screen.channels(visible, favorites, currentId(), onlyFavorites, message,
                 channel -> nowPlaying(channel, now));

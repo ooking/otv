@@ -1,5 +1,6 @@
 package com.xiaomitv.dtmb;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
@@ -27,6 +28,7 @@ final class Playback {
         void onPlaybackActiveChanged(boolean active);
     }
 
+    private final Context context;
     private final TvView view;
     private final AudioManager audio;
     private final XiaomiTvAudio xiaomiAudio;
@@ -53,15 +55,18 @@ final class Playback {
     private boolean contentBlocked;
     private long channelId = -1;
     private int audioTrackCount;
-    private String state = "未播放";
-    private String focusState = "未请求";
+    private String state;
+    private String focusState;
     private boolean activePlayback;
 
     Playback(TvView view, AudioManager audio, SharedPreferences preferences, Handler handler,
              Listener listener) {
+        this.context = view.getContext();
         this.view = view;
         this.audio = audio;
-        xiaomiAudio = new XiaomiTvAudio(audio);
+        this.state = context.getString(R.string.playback_not_playing);
+        this.focusState = context.getString(R.string.focus_not_requested);
+        xiaomiAudio = new XiaomiTvAudio(context, audio);
         subtitles = new BroadcastSubtitles(view, preferences);
         this.handler = handler;
         this.listener = listener;
@@ -75,7 +80,7 @@ final class Playback {
                 if (tuning) {
                     completeTune("");
                 } else {
-                    setState("画面已就绪", "");
+                    setState(context.getString(R.string.playback_video_ready), "");
                     applyVolume("video_available");
                     restoreSubtitles();
                     updatePlaybackActive(true);
@@ -88,15 +93,15 @@ final class Playback {
                 listener.onPreviewInvalidated(channelId, false);
                 videoAvailable = false;
                 audioOnly = reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY;
-                String message = switch (reason) {
-                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING -> "正在切换频道…";
-                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_WEAK_SIGNAL -> "DTMB 信号较弱";
-                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_BUFFERING -> "正在等待直播信号…";
-                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY -> "当前为纯音频节目";
+                String message = context.getString(switch (reason) {
+                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING -> R.string.playback_tuning;
+                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_WEAK_SIGNAL -> R.string.playback_weak_signal;
+                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_BUFFERING -> R.string.playback_buffering;
+                    case TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY -> R.string.playback_audio_only;
                     case TvInputManager.VIDEO_UNAVAILABLE_REASON_INSUFFICIENT_RESOURCE ->
-                            "调谐器资源不足，请关闭其他直播应用后重试";
-                    default -> "暂时没有画面";
-                };
+                            R.string.playback_insufficient_resource;
+                    default -> R.string.playback_no_video;
+                });
                 Log.i(TAG, "video_unavailable channel=" + channelId + " reason=" + reason);
                 if (tuning && audioOnly) {
                     completeTune(message);
@@ -111,12 +116,12 @@ final class Playback {
 
             @Override
             public void onConnectionFailed(String inputId) {
-                onSessionLost(inputId, "无法连接电视调谐器");
+                onSessionLost(inputId, context.getString(R.string.playback_conn_failed));
             }
 
             @Override
             public void onDisconnected(String inputId) {
-                onSessionLost(inputId, "电视调谐器已断开");
+                onSessionLost(inputId, context.getString(R.string.playback_disconnected));
             }
 
             @Override
@@ -125,7 +130,7 @@ final class Playback {
                 listener.onPreviewInvalidated(channelId, true);
                 contentBlocked = true;
                 updatePlaybackActive(false);
-                String message = "此频道受系统家长控制限制";
+                String message = context.getString(R.string.playback_content_blocked);
                 if (tuning && lastReadyChannel != -1 && lastReadyChannel != channelId) {
                     failTune(message);
                 } else {
@@ -142,8 +147,9 @@ final class Playback {
             public void onContentAllowed(String inputId) {
                 if (!isActive(inputId) || !contentBlocked) return;
                 contentBlocked = false;
-                String message = "正在等待直播信号…";
-                setState(videoAvailable ? "画面已就绪" : message, videoAvailable ? "" : message);
+                String message = context.getString(R.string.playback_buffering);
+                setState(videoAvailable ? context.getString(R.string.playback_video_ready) : message,
+                        videoAvailable ? "" : message);
                 applyVolume("content_allowed");
                 restoreSubtitles();
                 if (videoAvailable) {
@@ -195,7 +201,10 @@ final class Playback {
         for (TvTrackInfo track : video) {
             if (!track.getId().equals(selected) && video.size() != 1) continue;
             int height = track.getVideoHeight();
-            if (height > 0) return (subtitles.isEmpty() ? "" : subtitles + "   ") + height + " 线";
+            if (height > 0) {
+                return (subtitles.isEmpty() ? "" : subtitles + "   ")
+                        + context.getString(R.string.playback_video_height, height);
+            }
         }
         return subtitles;
     }
@@ -282,7 +291,8 @@ final class Playback {
         audioTrackCount = 0;
         boolean switching = lastReadyChannel != -1;
         if (!switching) updatePlaybackActive(false);
-        setState("正在切换频道…", switching ? "" : "正在连接直播信号…");
+        setState(context.getString(R.string.playback_tuning),
+                switching ? "" : context.getString(R.string.playback_connecting));
         listener.onTuning(id, switching);
 
         // Give the window a frame to draw the transition before the tuner can clear its surface.
@@ -297,7 +307,7 @@ final class Playback {
                 handler.postDelayed(tuneTimeout, switching ? 6_000 : 15_000);
             } catch (SecurityException | IllegalArgumentException | IllegalStateException exception) {
                 Log.w(TAG, "tune rejected", exception);
-                failTune("系统拒绝调谐，请检查频道和输入源");
+                failTune(context.getString(R.string.playback_tune_rejected));
             }
         }));
     }
@@ -314,7 +324,7 @@ final class Playback {
         long ready = channelId;
         String notice = recoveryMessage;
         recoveryMessage = "";
-        setState(videoAvailable ? "画面已就绪" : status, status);
+        setState(videoAvailable ? context.getString(R.string.playback_video_ready) : status, status);
         applyVolume(videoAvailable ? "video_available" : "audio_only");
         restoreSubtitles();
         updatePlaybackActive(videoAvailable || audioOnly);
@@ -342,7 +352,7 @@ final class Playback {
             recoveryMessage = "";
             startTune(next);
         } else if (previous != -1 && previous != attempted) {
-            recoveryMessage = "换台失败，已返回上一频道";
+            recoveryMessage = context.getString(R.string.playback_recovered);
             startTune(previous);
         } else {
             stop();
@@ -369,7 +379,7 @@ final class Playback {
         videoAvailable = false;
         audioOnly = false;
         audioTrackCount = 0;
-        state = "未播放";
+        state = context.getString(R.string.playback_not_playing);
         updatePlaybackActive(false);
     }
 
@@ -408,18 +418,17 @@ final class Playback {
     }
 
     String diagnostics() {
-        return "播放状态  " + state + "\n"
-                + "屏幕常亮  " + (activePlayback ? "已开启（防止待机与屏保）" : "未开启") + "\n"
-                + "音频焦点  " + focusState + "\n"
-                + "TIF 音量  " + (channelId == -1 ? "无会话" : volume()) + "\n"
-                + "会话报告的音轨数  " + audioTrackCount + "\n"
-                + (xiaomiAudio.supported() ? xiaomiAudio.diagnostics() + "\n" : "")
-                + "\n"
-                + "电视是否出声需现场确认。";
+        String keepOn = context.getString(activePlayback
+                ? R.string.diag_keep_on_enabled : R.string.diag_keep_on_disabled);
+        String tifVolume = channelId == -1
+                ? context.getString(R.string.diag_no_session) : String.valueOf(volume());
+        String xiaomiLine = xiaomiAudio.supported() ? xiaomiAudio.diagnostics() : "";
+        return context.getString(R.string.diag_report, state, keepOn, focusState, tifVolume,
+                audioTrackCount, xiaomiLine);
     }
 
     private void onTuneTimeout() {
-        if (tuning) failTune("调谐超时，可从菜单重新调谐");
+        if (tuning) failTune(context.getString(R.string.playback_tune_timeout));
     }
 
     private void onSessionLost(String inputId, String message) {
@@ -445,11 +454,11 @@ final class Playback {
         int result = audio.requestAudioFocus(request);
         if (result != AudioManager.AUDIOFOCUS_REQUEST_FAILED) focusRequest = request;
         focused = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-        focusState = switch (result) {
-            case AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> "已取得";
-            case AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> "等待系统分配";
-            default -> "系统未授予";
-        };
+        focusState = context.getString(switch (result) {
+            case AudioManager.AUDIOFOCUS_REQUEST_GRANTED -> R.string.focus_granted;
+            case AudioManager.AUDIOFOCUS_REQUEST_DELAYED -> R.string.focus_delayed;
+            default -> R.string.focus_denied;
+        });
         Log.i(TAG, "audio_focus_request channel=" + channelId + " result=" + result);
     }
 
@@ -457,7 +466,7 @@ final class Playback {
         if (focusRequest == null || channelId == -1) return;
         focused = change == AudioManager.AUDIOFOCUS_GAIN;
         if (change == AudioManager.AUDIOFOCUS_LOSS) releaseFocus();
-        focusState = focused ? "已取得" : "已失去";
+        focusState = context.getString(focused ? R.string.focus_granted : R.string.focus_lost);
         Log.i(TAG, "audio_focus_change channel=" + channelId + " change=" + change);
         applyVolume("focus_change");
     }
@@ -467,7 +476,7 @@ final class Playback {
         AudioFocusRequest request = focusRequest;
         focusRequest = null;
         focused = false;
-        focusState = "未请求";
+        focusState = context.getString(R.string.focus_not_requested);
         if (request != null) audio.abandonAudioFocusRequest(request);
     }
 

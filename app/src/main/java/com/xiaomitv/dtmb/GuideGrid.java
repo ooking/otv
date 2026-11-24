@@ -35,12 +35,14 @@ import static com.xiaomitv.dtmb.GuideTimeline.TICK;
 import static com.xiaomitv.dtmb.GuideTimeline.WINDOW;
 
 final class GuideGrid extends LinearLayout {
-    private static final String NO_PROGRAM = "暂无节目资料";
-
+    private final Context context;
+    private final String noProgramText;
+    private final String rulerTimeText;
+    private final String cellLiveTagText;
     private final TvStyle style;
     private final TvScreen.Actions actions;
-    private final DateFormat clockFormat = new SimpleDateFormat("yyyy/MM/dd(E) HH:mm", Locale.getDefault());
-    private final DateFormat hourFormat = new SimpleDateFormat("HH時", Locale.getDefault());
+    private final DateFormat clockFormat;
+    private final DateFormat hourFormat;
     private final DateFormat timeFormat;
 
     // 顶部 Header 控件
@@ -71,8 +73,15 @@ final class GuideGrid extends LinearLayout {
 
     GuideGrid(Context context, TvStyle style, TvScreen.Actions actions) {
         super(context);
+        this.context = context;
         this.style = style;
         this.actions = actions;
+        this.noProgramText = context.getString(R.string.sidebar_no_program);
+        this.rulerTimeText = context.getString(R.string.guide_ruler_time);
+        this.cellLiveTagText = context.getString(R.string.guide_cell_live_tag);
+        Locale locale = AppLanguage.activeLocale(context);
+        this.clockFormat = new SimpleDateFormat(context.getString(R.string.guide_clock_format), locale);
+        this.hourFormat = new SimpleDateFormat(context.getString(R.string.guide_hour_format), locale);
         setOrientation(VERTICAL);
         setBackgroundColor(TvStyle.BG_DARK);
         setFocusable(true);
@@ -106,7 +115,7 @@ final class GuideGrid extends LinearLayout {
         metaRow.addView(heroMeta, new LinearLayout.LayoutParams(-2, -2, 1f));
 
         heroLiveTag = style.text(12, Color.WHITE, true);
-        heroLiveTag.setText("放送中");
+        heroLiveTag.setText(R.string.guide_live_tag);
         heroLiveTag.setPadding(style.dp(8), style.dp(2), style.dp(8), style.dp(2));
         heroLiveTag.setBackground(style.surface(TvStyle.RED_LIVE, 6, Color.TRANSPARENT));
         LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams(-2, -2);
@@ -164,11 +173,11 @@ final class GuideGrid extends LinearLayout {
         this.playingId = playingId;
         this.schedules = schedules;
         now = System.currentTimeMillis();
-        groupPill.setText(onlyFavorites ? "收藏频道" : "全部频道");
+        groupPill.setText(onlyFavorites ? R.string.guide_group_favorites : R.string.guide_group_all);
 
         if (channels.isEmpty()) {
             clockView.setText(clockFormat.format(new Date(now)));
-            heroMeta.setText(onlyFavorites ? "还没有收藏频道。" : NO_PROGRAM);
+            heroMeta.setText(onlyFavorites ? context.getString(R.string.empty_no_favorites) : noProgramText);
             heroLiveTag.setVisibility(INVISIBLE);
             heroSynopsis.setText("");
             matrix.invalidate();
@@ -271,17 +280,18 @@ final class GuideGrid extends LinearLayout {
         if (program != null) {
             long minutes = Math.max(1, (program.end() - program.start()) / 60000L);
             String timeSpan = channel.name() + "   " + timeFormat.format(new Date(program.start())) + " ~ "
-                    + timeFormat.format(new Date(program.end())) + " (" + minutes + "分钟)";
+                    + timeFormat.format(new Date(program.end())) + " "
+                    + context.getString(R.string.guide_duration_minutes, minutes);
             heroMeta.setText(timeSpan);
             boolean isLive = now >= program.start() && now < program.end();
             heroLiveTag.setVisibility(isLive ? VISIBLE : INVISIBLE);
             String desc = program.description();
-            heroSynopsis.setText(TextUtils.isEmpty(desc) ? "暂无详细内容介绍。" : desc);
+            heroSynopsis.setText(TextUtils.isEmpty(desc) ? context.getString(R.string.guide_no_description) : desc);
         } else {
             heroMeta.setText(channel.name() + "   " + timeFormat.format(new Date(slot.start())) + " ~ "
                     + timeFormat.format(new Date(slot.end())));
             heroLiveTag.setVisibility(INVISIBLE);
-            heroSynopsis.setText("此时间段暂未获取到电台的节目单广播或网络 EPG 资料。");
+            heroSynopsis.setText(R.string.guide_no_epg_slot);
         }
     }
 
@@ -474,7 +484,7 @@ final class GuideGrid extends LinearLayout {
             textPaint.setColor(TvStyle.MUTED);
             textPaint.setTextSize(style.dp(12));
             textPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("时间", rulerWidth / 2f, headerHeight / 2f + style.dp(4), textPaint);
+            canvas.drawText(rulerTimeText, rulerWidth / 2f, headerHeight / 2f + style.dp(4), textPaint);
 
             // 边框分割线
             paint.setColor(0xff282b36);
@@ -542,7 +552,7 @@ final class GuideGrid extends LinearLayout {
             int maxLines = (int) ((contentBottom - contentTop - badgeSpace) / titleLineHeight);
             if (titleWidth <= 0 || maxLines < 1) return;
 
-            String title = slot.program() == null ? NO_PROGRAM : slot.program().title();
+            String title = slot.program() == null ? noProgramText : slot.program().title();
             StaticLayout layout = programTitleLayout(title, titleWidth, maxLines);
             layout.getPaint().setColor(isFocused ? TvStyle.FOCUS_TEXT : TvStyle.TEXT);
 
@@ -554,7 +564,7 @@ final class GuideGrid extends LinearLayout {
                 textPaint.setTextAlign(Paint.Align.LEFT);
                 textPaint.setTextSize(style.dp(10));
                 textPaint.setColor(isFocused ? 0xffc62828 : TvStyle.RED_LIVE);
-                canvas.drawText("[放送中]", 0, layout.getHeight() + style.dp(2) - textPaint.ascent(), textPaint);
+                canvas.drawText(cellLiveTagText, 0, layout.getHeight() + style.dp(2) - textPaint.ascent(), textPaint);
             }
             canvas.restoreToCount(saved);
         }

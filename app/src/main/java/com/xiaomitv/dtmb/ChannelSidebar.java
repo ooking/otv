@@ -70,9 +70,9 @@ final class ChannelSidebar {
         controlsParams.bottomMargin = style.dp(14);
         view.addView(controlsRow, controlsParams);
 
-        filterBtn = style.capsuleButton("全部频道", R.drawable.ic_channels, actions::filter);
-        guideBtn = style.capsuleButton("节目指南 (EPG)", R.drawable.ic_guide, actions::openGuide);
-        optionsBtn = style.capsuleButton("设置选项", R.drawable.ic_settings, actions::options);
+        filterBtn = style.capsuleButton(context.getString(R.string.sidebar_all_channels), R.drawable.ic_channels, actions::filter);
+        guideBtn = style.capsuleButton(context.getString(R.string.sidebar_guide), R.drawable.ic_guide, actions::openGuide);
+        optionsBtn = style.capsuleButton(context.getString(R.string.sidebar_options), R.drawable.ic_settings, actions::options);
 
         addCapsule(controlsRow, filterBtn);
         addCapsule(controlsRow, guideBtn);
@@ -151,7 +151,7 @@ final class ChannelSidebar {
         this.playingId = playingId;
         this.nowPlaying = nowPlaying;
 
-        filterBtn.setText(onlyFavorites ? "频道: 收藏" : "频道: 全部");
+        filterBtn.setText(onlyFavorites ? R.string.sidebar_filter_favorites : R.string.sidebar_filter_all);
         if (showingFavorites != onlyFavorites) {
             showingFavorites = onlyFavorites;
             style.setLeadingIcon(filterBtn,
@@ -208,7 +208,7 @@ final class ChannelSidebar {
 
             // 播放中小标
             TextView liveBadge = style.text(11, TvStyle.RED_LIVE, true);
-            liveBadge.setText("● 播放中");
+            liveBadge.setText(R.string.badge_playing);
             liveBadge.setVisibility(isCurrentPlaying ? View.VISIBLE : View.GONE);
             topRow.addView(liveBadge);
 
@@ -241,7 +241,7 @@ final class ChannelSidebar {
                 timeView.setText(timeFormat.format(new Date(program.start())) + " ~ "
                         + timeFormat.format(new Date(program.end())));
             } else {
-                timeView.setText("当前时段");
+                timeView.setText(R.string.sidebar_current_slot);
             }
             LinearLayout details = new LinearLayout(context);
             details.setGravity(Gravity.CENTER_VERTICAL);
@@ -257,7 +257,7 @@ final class ChannelSidebar {
             if (program != null) {
                 progView.setText(program.title());
             } else {
-                progView.setText(isCurrentPlaying ? "正在播出" : "暂无节目资料");
+                progView.setText(isCurrentPlaying ? R.string.sidebar_on_air : R.string.sidebar_no_program);
             }
             labels.addView(progView);
             android.graphics.Bitmap image = previews.get(channel);

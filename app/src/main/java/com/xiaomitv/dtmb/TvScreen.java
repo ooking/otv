@@ -108,12 +108,12 @@ final class TvScreen {
         options.setPadding(style.dp(24), style.dp(22), style.dp(24), style.dp(20));
 
         TextView optTitle = style.text(22, TvStyle.TEXT, true);
-        optTitle.setText("设置与选项");
+        optTitle.setText(R.string.options_title);
         style.setLeadingIcon(optTitle, R.drawable.ic_settings, 20);
         options.addView(optTitle);
 
         TextView optSub = style.text(13, TvStyle.MUTED, false);
-        optSub.setText("按 OK 键进入设置 · 返回键关闭");
+        optSub.setText(R.string.options_subtitle);
         optSub.setPadding(0, style.dp(4), 0, style.dp(12));
         options.addView(optSub);
 
@@ -131,7 +131,7 @@ final class TvScreen {
         options.addView(optionsList, optionsParams);
 
         TextView optFooter = style.text(12, 0xff707485, false);
-        optFooter.setText("OTV · DTMB 播放核心");
+        optFooter.setText(R.string.options_footer);
         optFooter.setGravity(Gravity.CENTER);
         optFooter.setPadding(0, style.dp(10), 0, 0);
         options.addView(optFooter);

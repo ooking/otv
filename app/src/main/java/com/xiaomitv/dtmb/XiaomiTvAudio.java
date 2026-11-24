@@ -1,5 +1,6 @@
 package com.xiaomitv.dtmb;
 
+import android.content.Context;
 import android.media.AudioManager;
 import android.os.Build;
 import android.util.Log;
@@ -8,13 +9,16 @@ final class XiaomiTvAudio {
     private static final String TAG = "DtmbPlayback";
     private static final String TV_MUTE = "TV-Mute";
 
+    private final Context context;
     private final AudioManager audio;
     private boolean enabled;
     private boolean unmuteRequested;
-    private String lastRequest = "尚未发送";
+    private String lastRequest;
 
-    XiaomiTvAudio(AudioManager audio) {
+    XiaomiTvAudio(Context context, AudioManager audio) {
+        this.context = context;
         this.audio = audio;
+        this.lastRequest = context.getString(R.string.diag_not_sent);
     }
 
     boolean supported() {
@@ -44,13 +48,13 @@ final class XiaomiTvAudio {
             lastRequest = parameter;
             Log.i(TAG, "xiaomi_audio request=" + parameter);
         } catch (SecurityException | IllegalArgumentException exception) {
-            lastRequest = "系统拒绝 " + parameter;
+            lastRequest = context.getString(R.string.diag_rejected, parameter);
             Log.w(TAG, "xiaomi_audio rejected " + parameter, exception);
         }
     }
 
     String diagnostics() {
-        return "小米音频兼容  " + (enabled ? "已开启" : "已关闭")
-                + "\n最近的厂商音频请求  " + lastRequest;
+        String state = context.getString(enabled ? R.string.diag_enabled : R.string.diag_disabled);
+        return context.getString(R.string.diag_xiaomi_audio, state, lastRequest);
     }
 }

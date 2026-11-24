@@ -1,0 +1,183 @@
+<resources>
+    <!-- 通用操作 -->
+    <string name="action_back">返回</string>
+    <string name="action_close">关闭</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_done">完成</string>
+    <string name="action_enable">开启</string>
+    <string name="action_disable">关闭</string>
+    <string name="action_import">导入</string>
+
+    <!-- 语言设置 -->
+    <string name="option_language">语言</string>
+    <string name="language_dialog_title">选择语言</string>
+    <string name="language_follow_system">跟随系统</string>
+    <string name="language_summary_system">跟随系统（%1$s）</string>
+
+    <!-- 选项面板 -->
+    <string name="options_title">设置与选项</string>
+    <string name="options_subtitle">按 OK 键进入设置 · 返回键关闭</string>
+    <string name="options_footer">OTV · DTMB 播放核心</string>
+    <string name="option_audio_tracks">声道与音轨</string>
+    <string name="option_subtitles">字幕</string>
+    <string name="option_picture_settings">图像设置</string>
+    <string name="option_sound_settings">声音设置</string>
+    <string name="option_favorite_add">收藏当前频道</string>
+    <string name="option_favorite_remove">取消收藏当前频道</string>
+    <string name="option_hide_channel">隐藏当前频道</string>
+    <string name="option_unhide_channel">恢复当前频道显示</string>
+    <string name="option_channel_manager">频道管理（排序与隐藏）</string>
+    <string name="option_grant_listings_permission">授予电视节目权限</string>
+    <string name="option_xiaomi_scan">前往小米直播搜台</string>
+    <string name="option_xiaomi_scan_summary">打开地面数字电视后，按菜单键选择搜台</string>
+    <string name="option_import_xmltv">导入 XMLTV 节目表</string>
+    <string name="option_audio_diagnostics">音频诊断</string>
+    <string name="option_xiaomi_audio_on">小米音频兼容 · 开启</string>
+    <string name="option_xiaomi_audio_off">小米音频兼容 · 关闭</string>
+
+    <!-- 频道栏与空状态 -->
+    <string name="sidebar_all_channels">全部频道</string>
+    <string name="sidebar_guide">节目指南 (EPG)</string>
+    <string name="sidebar_options">设置选项</string>
+    <string name="sidebar_filter_favorites">频道: 收藏</string>
+    <string name="sidebar_filter_all">频道: 全部</string>
+    <string name="badge_playing">● 播放中</string>
+    <string name="sidebar_current_slot">当前时段</string>
+    <string name="sidebar_on_air">正在播出</string>
+    <string name="sidebar_no_program">暂无节目资料</string>
+    <string name="empty_loading_channels">正在读取频道…</string>
+    <string name="empty_no_tuner">未发现小米电视的 MediaTek 调谐器输入。</string>
+    <string name="empty_no_permission">请在「选项」中授予电视节目权限。曾拒绝授权时，可从系统应用详情开启。</string>
+    <string name="empty_no_dtmb_channels">没有可读取的 DTMB 频道。请先在小米电视自带的直播应用中搜台，返回后会自动读取频道。</string>
+    <string name="empty_listings_unreadable">系统频道数据不可读，请检查电视节目权限后重试。</string>
+    <string name="status_channel_load_failed">频道读取失败，重新进入 OTV 可重试</string>
+    <string name="empty_all_hidden">所有频道均已隐藏，可在「选项」-「频道管理」中恢复。</string>
+    <string name="empty_no_favorites">还没有收藏频道。</string>
+    <string name="default_channel_name">频道 %1$d</string>
+
+    <!-- 频道管理对话框 -->
+    <string name="channel_mgr_title">频道管理与排序</string>
+    <string name="channel_mgr_reset_order">恢复默认排序</string>
+    <string name="channel_mgr_restore_all">恢复全部显示</string>
+    <string name="channel_mgr_hint">【操作提示】↑ / ↓ 移动焦点   ← 向上移动   → 向下移动   OK 频道操作菜单   返回 保存并退出</string>
+    <string name="channel_mgr_subtitle">共 %1$d 个频道 · %2$d 个已隐藏</string>
+    <string name="channel_mgr_toast_restored">已恢复显示：%1$s</string>
+    <string name="channel_mgr_toast_hidden">已隐藏频道：%1$s</string>
+    <string name="channel_mgr_toast_hidden_hint">已隐藏频道：%1$s，可从「频道管理」恢复</string>
+    <string name="channel_mgr_toast_empty">暂无频道可供管理</string>
+    <string name="channel_mgr_toast_order_reset">已恢复系统默认排序</string>
+    <string name="channel_mgr_restore_all_title">恢复全部显示</string>
+    <string name="channel_mgr_restore_all_msg">确定要将所有已隐藏的电视台恢复显示吗？</string>
+    <string name="channel_mgr_toast_all_restored">已恢复所有电视频道显示</string>
+    <string name="channel_mgr_reset_title">恢复默认排序</string>
+    <string name="channel_mgr_reset_msg">确定要清除自定义排序，恢复为系统默认台号顺序吗？</string>
+    <string name="channel_mgr_reset_confirm">恢复默认</string>
+    <string name="channel_mgr_action_unhide">恢复显示此频道</string>
+    <string name="channel_mgr_action_hide">隐藏此频道</string>
+    <string name="channel_mgr_action_move_up">向上移动一位 (↑)</string>
+    <string name="channel_mgr_action_move_down">向下移动一位 (↓)</string>
+    <string name="channel_mgr_action_move_top">移至顶部</string>
+    <string name="channel_mgr_action_move_bottom">移至末尾</string>
+    <string name="channel_mgr_action_unfavorite">取消收藏</string>
+    <string name="channel_mgr_action_favorite">收藏此频道</string>
+    <string name="channel_mgr_badge_fav">★ 收藏</string>
+    <string name="channel_mgr_badge_hidden">已隐藏</string>
+    <string name="channel_mgr_row_hint">← 上移 / 下移 →</string>
+
+    <!-- 节目横幅与节目指南 -->
+    <string name="overlay_next_program">随后播出: %1$s</string>
+    <string name="overlay_tuning">正在调谐频道…</string>
+    <string name="overlay_more_info">按 [左键] 查看完整详情</string>
+    <string name="guide_live_tag">直播中</string>
+    <string name="guide_cell_live_tag">[直播中]</string>
+    <string name="guide_group_favorites">收藏频道</string>
+    <string name="guide_group_all">全部频道</string>
+    <string name="guide_duration_minutes">(%1$d分钟)</string>
+    <string name="guide_no_description">暂无详细内容介绍。</string>
+    <string name="guide_no_epg_slot">此时间段暂未获取到电台的节目单广播或网络 EPG 资料。</string>
+    <string name="guide_ruler_time">时间</string>
+    <string name="guide_clock_format">yyyy/MM/dd(E) HH:mm</string>
+    <string name="guide_hour_format">HH时</string>
+
+    <!-- 音轨与字幕 -->
+    <string name="audio_summary_none">暂无可用音轨</string>
+    <string name="audio_summary_unreported">未报告当前音轨</string>
+    <string name="audio_dialog_empty">当前节目尚未报告可用音轨。画面就绪后可再打开菜单。</string>
+    <string name="audio_toast_changed">音轨已变化，请重新打开菜单。</string>
+    <string name="subtitle_summary_none">暂无可选字幕</string>
+    <string name="subtitle_off">关闭字幕</string>
+    <string name="subtitle_dialog_title">广播字幕</string>
+    <string name="subtitle_system_style">系统字幕样式</string>
+    <string name="subtitle_dialog_empty">当前节目没有报告可选的字幕轨。画面中的内嵌字幕随节目播出。</string>
+    <string name="subtitle_toast_changed">字幕轨已变化，请重新打开菜单。</string>
+    <string name="caption_style_msg">系统样式适用于支持 Android 字幕偏好的内容。DTMB 广播字幕由电视调谐器绘制，样式取决于节目和固件。</string>
+    <string name="caption_style_open_settings">打开系统设置</string>
+    <string name="caption_style_unavailable">此电视未提供 Android 字幕样式设置入口。</string>
+    <string name="track_audio_label">音轨 %1$d</string>
+    <string name="track_channels">%1$d 声道</string>
+    <string name="track_subtitle_label">字幕 %1$d</string>
+    <string name="lang_chinese">中文</string>
+    <string name="lang_zh_hans">简体中文</string>
+    <string name="lang_zh_hant">繁體中文</string>
+    <string name="lang_english">英语</string>
+    <string name="lang_cantonese">粤语</string>
+    <string name="lang_mandarin">普通话</string>
+
+    <!-- XMLTV 导入 -->
+    <string name="xmltv_toast_importing">正在导入节目表…</string>
+    <string name="xmltv_toast_downloading">正在下载节目表…</string>
+    <string name="xmltv_source_hk">香港节目源（epg.pw）</string>
+    <string name="xmltv_source_hoy">HOY 补充节目源</string>
+    <string name="xmltv_source_url">输入 HTTPS 网址</string>
+    <string name="xmltv_source_local">选择本地文件</string>
+    <string name="xmltv_url_title">XMLTV 网址</string>
+    <string name="xmltv_result_title">导入 XMLTV</string>
+    <string name="xmltv_err_direct_https">请输入可直接访问的 HTTPS 节目表网址。</string>
+    <string name="xmltv_err_valid_https">请输入有效的 HTTPS 节目表网址。</string>
+    <string name="xmltv_err_no_picker">此电视没有可用的系统文件选择器。</string>
+    <string name="xmltv_result_no_match">没有匹配到未来 7 天的节目，请核对 XMLTV 频道名称和日期。</string>
+    <string name="xmltv_result_imported">已导入 %1$d 个频道的节目表。</string>
+    <string name="xmltv_result_failed">无法导入节目表，请检查网络、文件或 HTTPS 网址。</string>
+
+    <!-- 小米电视设置与诊断 -->
+    <string name="xiaomi_av_standard">普通音效</string>
+    <string name="xiaomi_av_dolby">杜比音效</string>
+    <string name="xiaomi_av_unavailable">当前系统未开放此入口，请在电视自带的直播应用中打开%1$s。</string>
+    <string name="xiaomi_scan_unavailable">此固件无法直接打开地面数字电视。请从电视的输入源进入地面数字电视，按菜单键选择搜台。回到 OTV 后会自动读取频道。</string>
+    <string name="xiaomi_audio_title">小米音频兼容</string>
+    <string name="xiaomi_audio_msg">用于小米电视 DTMB 有画面但无声的情况。播放时按音频焦点和媒体静音状态控制电视输入音频。</string>
+    <string name="diag_retry_audio">重试音频</string>
+    <string name="diag_report">播放状态  %1$s\n屏幕常亮  %2$s\n音频焦点  %3$s\nTIF 音量  %4$s\n会话报告的音轨数  %5$d\n%6$s\n电视是否出声需现场确认。</string>
+    <string name="diag_keep_on_enabled">已开启（防止待机与屏保）</string>
+    <string name="diag_keep_on_disabled">未开启</string>
+    <string name="diag_no_session">无会话</string>
+    <string name="diag_xiaomi_audio">小米音频兼容  %1$s\n最近的厂商音频请求  %2$s\n</string>
+    <string name="diag_enabled">已开启</string>
+    <string name="diag_disabled">已关闭</string>
+    <string name="diag_not_sent">尚未发送</string>
+    <string name="diag_rejected">系统拒绝 %1$s</string>
+
+    <!-- 播放状态 -->
+    <string name="playback_not_playing">未播放</string>
+    <string name="playback_video_ready">画面已就绪</string>
+    <string name="playback_tuning">正在切换频道…</string>
+    <string name="playback_connecting">正在连接直播信号…</string>
+    <string name="playback_weak_signal">DTMB 信号较弱</string>
+    <string name="playback_buffering">正在等待直播信号…</string>
+    <string name="playback_audio_only">当前为纯音频节目</string>
+    <string name="playback_insufficient_resource">调谐器资源不足，请关闭其他直播应用后重试</string>
+    <string name="playback_no_video">暂时没有画面</string>
+    <string name="playback_conn_failed">无法连接电视调谐器</string>
+    <string name="playback_disconnected">电视调谐器已断开</string>
+    <string name="playback_content_blocked">此频道受系统家长控制限制</string>
+    <string name="playback_tune_rejected">系统拒绝调谐，请检查频道和输入源</string>
+    <string name="playback_recovered">换台失败，已返回上一频道</string>
+    <string name="playback_tune_timeout">调谐超时，可从菜单重新调谐</string>
+    <string name="playback_video_height">%1$d 线</string>
+    <string name="focus_not_requested">未请求</string>
+    <string name="focus_granted">已取得</string>
+    <string name="focus_delayed">等待系统分配</string>
+    <string name="focus_denied">系统未授予</string>
+    <string name="focus_lost">已失去</string>
+</resources>

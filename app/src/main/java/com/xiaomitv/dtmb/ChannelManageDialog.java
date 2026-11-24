@@ -81,7 +81,7 @@ final class ChannelManageDialog extends Dialog {
         titleLayout.setOrientation(LinearLayout.VERTICAL);
 
         TextView titleView = style.text(22, 0xffffffff, true);
-        titleView.setText("频道管理与排序");
+        titleView.setText(R.string.channel_mgr_title);
         style.setLeadingIcon(titleView, R.drawable.ic_channels, 20);
         titleLayout.addView(titleView);
 
@@ -92,9 +92,9 @@ final class ChannelManageDialog extends Dialog {
         header.addView(titleLayout, new LinearLayout.LayoutParams(0, -2, 1f));
 
         // 顶部操作按钮
-        Button resetOrderBtn = style.capsuleButton("恢复默认排序", this::confirmResetOrder);
-        restoreHiddenBtn = style.capsuleButton("恢复全部显示", this::restoreAllHidden);
-        doneBtn = style.capsuleButton("完成", this::dismiss);
+        Button resetOrderBtn = style.capsuleButton(context.getString(R.string.channel_mgr_reset_order), this::confirmResetOrder);
+        restoreHiddenBtn = style.capsuleButton(context.getString(R.string.channel_mgr_restore_all), this::restoreAllHidden);
+        doneBtn = style.capsuleButton(context.getString(R.string.action_done), this::dismiss);
 
         addCapsule(header, resetOrderBtn);
         addCapsule(header, restoreHiddenBtn);
@@ -111,7 +111,7 @@ final class ChannelManageDialog extends Dialog {
 
         // 操作指引提示
         TextView hintView = style.text(12, 0xff9ba1b0, false);
-        hintView.setText("【操作提示】↑ / ↓ 移动焦点   ← 向上移动   → 向下移动   OK 频道操作菜单   返回 保存并退出");
+        hintView.setText(R.string.channel_mgr_hint);
         hintView.setPadding(0, 0, 0, style.dp(8));
         root.addView(hintView);
 
@@ -201,7 +201,7 @@ final class ChannelManageDialog extends Dialog {
                 hiddenCount++;
             }
         }
-        subtitleView.setText("共 " + total + " 个频道 · " + hiddenCount + " 个已隐藏");
+        subtitleView.setText(getContext().getString(R.string.channel_mgr_subtitle, total, hiddenCount));
         if (hiddenCount == 0 && restoreHiddenBtn.hasFocus()) doneBtn.requestFocus();
         restoreHiddenBtn.setVisibility(hiddenCount > 0 ? View.VISIBLE : View.GONE);
     }
@@ -230,10 +230,12 @@ final class ChannelManageDialog extends Dialog {
         String idStr = Long.toString(c.id());
         if (hidden.contains(idStr)) {
             hidden.remove(idStr);
-            Toast.makeText(getContext(), "已恢复显示：" + c.name(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getContext().getString(R.string.channel_mgr_toast_restored, c.name()),
+                    Toast.LENGTH_SHORT).show();
         } else {
             hidden.add(idStr);
-            Toast.makeText(getContext(), "已隐藏频道：" + c.name(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getContext().getString(R.string.channel_mgr_toast_hidden, c.name()),
+                    Toast.LENGTH_SHORT).show();
         }
         notifyChange();
     }
@@ -253,28 +255,28 @@ final class ChannelManageDialog extends Dialog {
     private void restoreAllHidden() {
         if (hidden.isEmpty()) return;
         new AlertDialog.Builder(getContext())
-                .setTitle("恢复全部显示")
-                .setMessage("确定要将所有已隐藏的电视台恢复显示吗？")
-                .setPositiveButton("确定", (dialog, which) -> {
+                .setTitle(R.string.channel_mgr_restore_all_title)
+                .setMessage(R.string.channel_mgr_restore_all_msg)
+                .setPositiveButton(R.string.action_confirm, (dialog, which) -> {
                     hidden.clear();
                     notifyChange();
-                    Toast.makeText(getContext(), "已恢复所有电视频道显示", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.channel_mgr_toast_all_restored, Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
     private void confirmResetOrder() {
         new AlertDialog.Builder(getContext())
-                .setTitle("恢复默认排序")
-                .setMessage("确定要清除自定义排序，恢复为系统默认台号顺序吗？")
-                .setPositiveButton("恢复默认", (dialog, which) -> {
+                .setTitle(R.string.channel_mgr_reset_title)
+                .setMessage(R.string.channel_mgr_reset_msg)
+                .setPositiveButton(R.string.channel_mgr_reset_confirm, (dialog, which) -> {
                     if (listener != null) {
                         listener.onResetDefaultOrder();
                     }
                     dismiss();
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(R.string.action_cancel, null)
                 .show();
     }
 
@@ -285,34 +287,36 @@ final class ChannelManageDialog extends Dialog {
         boolean isHidden = hidden.contains(idStr);
         boolean isFav = favorites.contains(idStr);
 
+        Context ctx = getContext();
         List<String> items = new ArrayList<>();
-        items.add(isHidden ? "恢复显示此频道" : "隐藏此频道");
-        if (position > 0) items.add("向上移动一位 (↑)");
-        if (position < channels.size() - 1) items.add("向下移动一位 (↓)");
-        if (position > 0) items.add("移至顶部");
-        if (position < channels.size() - 1) items.add("移至末尾");
-        items.add(isFav ? "取消收藏" : "收藏此频道");
+        List<Runnable> actions = new ArrayList<>();
+
+        items.add(ctx.getString(isHidden ? R.string.channel_mgr_action_unhide : R.string.channel_mgr_action_hide));
+        actions.add(() -> toggleHidden(position));
+        if (position > 0) {
+            items.add(ctx.getString(R.string.channel_mgr_action_move_up));
+            actions.add(() -> moveChannel(position, position - 1));
+        }
+        if (position < channels.size() - 1) {
+            items.add(ctx.getString(R.string.channel_mgr_action_move_down));
+            actions.add(() -> moveChannel(position, position + 1));
+        }
+        if (position > 0) {
+            items.add(ctx.getString(R.string.channel_mgr_action_move_top));
+            actions.add(() -> moveChannel(position, 0));
+        }
+        if (position < channels.size() - 1) {
+            items.add(ctx.getString(R.string.channel_mgr_action_move_bottom));
+            actions.add(() -> moveChannel(position, channels.size() - 1));
+        }
+        items.add(ctx.getString(isFav ? R.string.channel_mgr_action_unfavorite : R.string.channel_mgr_action_favorite));
+        actions.add(() -> toggleFavorite(position));
 
         String[] itemArray = items.toArray(new String[0]);
-        new AlertDialog.Builder(getContext())
+        new AlertDialog.Builder(ctx)
                 .setTitle(c.label())
-                .setItems(itemArray, (dialog, which) -> {
-                    String selected = itemArray[which];
-                    if (selected.contains("隐藏此频道") || selected.contains("恢复显示此频道")) {
-                        toggleHidden(position);
-                    } else if (selected.contains("向上移动一位")) {
-                        moveChannel(position, position - 1);
-                    } else if (selected.contains("向下移动一位")) {
-                        moveChannel(position, position + 1);
-                    } else if (selected.contains("移至顶部")) {
-                        moveChannel(position, 0);
-                    } else if (selected.contains("移至末尾")) {
-                        moveChannel(position, channels.size() - 1);
-                    } else if (selected.contains("收藏")) {
-                        toggleFavorite(position);
-                    }
-                })
-                .setNegativeButton("返回", null)
+                .setItems(itemArray, (dialog, which) -> actions.get(which).run())
+                .setNegativeButton(R.string.action_back, null)
                 .show();
     }
 
@@ -379,13 +383,13 @@ final class ChannelManageDialog extends Dialog {
                 badgeContainer.setGravity(Gravity.CENTER_VERTICAL);
 
                 TextView playingBadge = style.text(11, 0xffffffff, true);
-                playingBadge.setText("● 播放中");
+                playingBadge.setText(R.string.badge_playing);
                 playingBadge.setBackground(style.surface(TvStyle.RED_LIVE, 4, Color.TRANSPARENT));
                 playingBadge.setPadding(style.dp(6), style.dp(1), style.dp(6), style.dp(1));
                 badgeContainer.addView(playingBadge);
 
                 TextView favBadge = style.text(11, 0xff101115, true);
-                favBadge.setText("★ 收藏");
+                favBadge.setText(R.string.channel_mgr_badge_fav);
                 favBadge.setBackground(style.surface(TvStyle.GOLD_GUIDE, 4, Color.TRANSPARENT));
                 favBadge.setPadding(style.dp(6), style.dp(1), style.dp(6), style.dp(1));
                 LinearLayout.LayoutParams favLp = new LinearLayout.LayoutParams(-2, -2);
@@ -393,7 +397,7 @@ final class ChannelManageDialog extends Dialog {
                 badgeContainer.addView(favBadge, favLp);
 
                 TextView hiddenBadge = style.text(11, 0xffffffff, true);
-                hiddenBadge.setText("已隐藏");
+                hiddenBadge.setText(R.string.channel_mgr_badge_hidden);
                 hiddenBadge.setBackground(style.surface(0xffb91c1c, 4, Color.TRANSPARENT));
                 hiddenBadge.setPadding(style.dp(6), style.dp(1), style.dp(6), style.dp(1));
                 LinearLayout.LayoutParams hiddenLp = new LinearLayout.LayoutParams(-2, -2);
@@ -406,7 +410,7 @@ final class ChannelManageDialog extends Dialog {
                 TextView actionHint = style.text(11, 0xff717684, false);
                 actionHint.setDuplicateParentStateEnabled(true);
                 actionHint.setTextColor(style.focusText(0xff717684));
-                actionHint.setText("← 上移 / 下移 →");
+                actionHint.setText(R.string.channel_mgr_row_hint);
                 actionHint.setPadding(style.dp(12), 0, 0, 0);
                 row.addView(actionHint);
 
