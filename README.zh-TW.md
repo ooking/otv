@@ -26,8 +26,8 @@ OTV 基於 Android TV 原生 TIF 架構，直接調用電視內置調諧器，�
 ## 快速開始
 
 ### 1. 首次設定
-1. 先在小米電視自帶的直播應用中選擇「地面數碼電視」並完成搜台（亦可在 OTV 設定中點擊「前往小米直播搜台」跳轉）。
-2. 開啟 OTV，進入 **設定選項 → 授予電視節目權限** 完成授權，應用會自動讀取已搜尋的頻道。
+1. 開啟 OTV，依系統視窗提示授予「電視節目」權限。
+2. 若電視尚未搜台，應用會自動提示並可一鍵跳轉至小米電視自帶「地面數碼電視」完成搜台，按返回鍵回到 OTV 即可自動載入頻道並播放。
 
 ### 2. 遙控器操作
 
@@ -40,20 +40,47 @@ OTV 基於 Android TV 原生 TIF 架構，直接調用電視內置調諧器，�
 | **Menu（選單）** | 開啟右側設定與選項選單（音軌、字幕、畫質／聲音、收藏與隱藏） |
 
 ### 3. 實用提示
-- **有畫面無聲音**：在「設定選項 → 小米音訊相容」中開啟適配即可。
-- **節目表不全**：部分廣播訊號僅提供少量節目資訊，可在「設定選項 → 匯入 XMLTV 節目表」中一鍵下載香港／HOY 節目源，或匯入自訂 `.xml` / `.xml.gz` 節目源。
+- **有畫面無聲音**：「小米音訊相容」在小米／Redmi 電視上已預設開啟；若無聲音請先檢查電視媒體音量，或進入「設定選項 → 音訊診斷」排查。
+- **節目表不全**：部分廣播訊號僅提供少量節目資訊，可在節目指南 (EPG) 空白時段按確認鍵，或在「設定選項 → 匯入 XMLTV 節目表」中一鍵下載香港／HOY 節目源，亦可匯入自訂 `.xml` / `.xml.gz` 節目源。
 
 ## 建置與開發
 
-需要 JDK 17、Android SDK Platform 35 與 Build-Tools 34.0.0：
+需要 JDK 17+、Android SDK Platform 35 與 Build-Tools 34.0.0。專案於 `shell/` 目錄下提供開箱即用的建置腳本，歸檔產物統一輸出至 `dist/` 目錄：
+
+### 1. 建置 Debug APK（獨立套件名 `com.xiaomitv.dtmb.debug`，可與正式版共存）
 
 ```sh
-./gradlew :app:assembleDebug
-adb -s <電視序號> install -r app/build/outputs/apk/debug/app-debug.apk
-adb -s <電視序號> shell am start -n com.xiaomitv.dtmb/.MainActivity
+./shell/build-debug.sh
+# 加上 -i 可於建置完成後自動透過 adb 安裝至電視並啟動：
+./shell/build-debug.sh -i
 ```
 
-更多架構說明、原始碼導覽與實機除錯指南，請參閱 [開發文件](docs/README.md)。
+### 2. 建置 Release APK（正式套件名 `com.xiaomitv.dtmb`）
+
+首次建置正式版前，執行一次初始化腳本產生簽章憑證與本機私密設定 `keystore.properties`（已被 Git 忽略，不會上傳）：
+
+```sh
+# 僅首次執行一次：產生憑證並寫入本機 keystore.properties
+./shell/init-keystore.sh
+
+# 一鍵建置並簽章正式版（加上 -i 可自動覆蓋安裝至電視並啟動）
+./shell/build-release.sh
+./shell/build-release.sh -i
+```
+
+### 3. 透過 ADB 連線電視並覆蓋安裝
+
+```sh
+# 首次指定電視區域網路 IP（自動記住位址至本機 .tv-device，後續可省略 IP）
+./shell/install-tv.sh release 192.168.31.88
+./shell/install-tv.sh debug 192.168.31.88
+
+# 後續一鍵重連電視並覆蓋安裝（加上 -b 先重新編譯，加上 -f 遇簽章衝突時自動解除安裝重裝）
+./shell/install-tv.sh release
+./shell/install-tv.sh debug -b
+```
+
+更多架構說明、GitHub Actions 簽章設定與實機除錯指南，請參閱 [開發文件](docs/README.md) 與 [簽章發佈指南](docs/release-signing.md)。
 
 ## 開源授權
 

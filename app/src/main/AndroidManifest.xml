@@ -6,13 +6,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <queries>
         <package android:name="com.xiaomi.mitv.settings" />
+        <package android:name="com.xiaomi.mitv.tvplayer" />
         <package android:name="com.mediatek.tvinput" />
     </queries>
     <application
         android:allowBackup="false"
         android:banner="@drawable/tv_banner"
         android:icon="@drawable/tv_icon"
-        android:label="@string/app_name"
+        android:label="${appLabel}"
         android:localeConfig="@xml/locales_config"
         android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">

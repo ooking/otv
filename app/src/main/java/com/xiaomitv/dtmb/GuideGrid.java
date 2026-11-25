@@ -1,5 +1,6 @@
 package com.xiaomitv.dtmb;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -265,8 +266,22 @@ final class GuideGrid extends LinearLayout {
             actions.select(channel);
         } else if (program != null) {
             actions.programDetails(channel, program);
+        } else if (slot.start() > currentTime || channel.id() == playingId) {
+            // 未来空白时段或当前正在播放频道的空白时段，直接打开导入 XMLTV 节目表弹窗
+            actions.importXmlTv();
         } else {
-            actions.select(channel);
+            // 其他频道的当前/过往空白时段，提供切台或导入 XMLTV 二选一
+            new AlertDialog.Builder(context)
+                    .setTitle(channel.label())
+                    .setItems(new String[]{
+                            context.getString(R.string.guide_empty_slot_switch_channel),
+                            context.getString(R.string.option_import_xmltv)
+                    }, (dialog, which) -> {
+                        if (which == 0) actions.select(channel);
+                        else actions.importXmlTv();
+                    })
+                    .setNegativeButton(R.string.action_cancel, null)
+                    .show();
         }
     }
 

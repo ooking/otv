@@ -34,7 +34,19 @@ final class TvScreen {
         void filter();
         void openGuide();
         void options();
+        void openHelp();
+        void importXmlTv();
         void programDetails(Channel channel, Program program);
+    }
+
+    record EmptyState(String message, String actionLabel, int iconRes, Runnable action) {
+        static EmptyState messageOnly(String message) {
+            return new EmptyState(message, "", 0, null);
+        }
+
+        boolean hasAction() {
+            return action != null && !actionLabel.isEmpty();
+        }
     }
 
     record Option(String label, int iconRes, String summary, boolean dividerBefore, Runnable action) {
@@ -130,8 +142,10 @@ final class TvScreen {
         optionsParams.topMargin = style.dp(14);
         options.addView(optionsList, optionsParams);
 
-        TextView optFooter = style.text(12, 0xff707485, false);
-        optFooter.setText(R.string.options_footer);
+        boolean debugBuild = AppVersion.isDebug(activity);
+        TextView optFooter = style.text(12, debugBuild ? 0xfffbbf24 : 0xff94a3b8, true);
+        optFooter.setText(activity.getString(R.string.options_footer,
+                AppVersion.versionTag(activity), AppVersion.buildType(activity)));
         optFooter.setGravity(Gravity.CENTER);
         optFooter.setPadding(0, style.dp(10), 0, 0);
         options.addView(optFooter);
@@ -206,8 +220,8 @@ final class TvScreen {
     }
 
     void channels(List<Channel> channels, Set<String> favorites, long playingId,
-                  boolean onlyFavorites, String message, Function<Channel, Program> nowPlaying) {
-        sidebar.update(channels, favorites, playingId, onlyFavorites, message, nowPlaying);
+                  boolean onlyFavorites, EmptyState emptyState, Function<Channel, Program> nowPlaying) {
+        sidebar.update(channels, favorites, playingId, onlyFavorites, emptyState, nowPlaying);
     }
 
     boolean back() {

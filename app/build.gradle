@@ -2,6 +2,27 @@ plugins {
     id 'com.android.application' version '8.6.1'
 }
 
+// 读取本地私密签名配置（keystore.properties 不提交到 Git；不存在时保持未签名以兼容 GitHub Actions）
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.isFile()) {
+    keystorePropsFile.withInputStream { stream -> keystoreProps.load(stream) }
+}
+def resolveKeystoreFile = { String rawPath ->
+    if (!rawPath) return null
+    def trimmed = rawPath.trim()
+    if (trimmed.startsWith('~/')) {
+        return new File(System.getProperty('user.home'), trimmed.substring(2))
+    }
+    def candidate = new File(trimmed)
+    return candidate.isAbsolute() ? candidate : rootProject.file(trimmed)
+}
+def releaseStoreFile = resolveKeystoreFile(keystoreProps.getProperty('storeFile'))
+def hasReleaseSigning = releaseStoreFile != null &&
+        releaseStoreFile.isFile() &&
+        keystoreProps.getProperty('storePassword') &&
+        keystoreProps.getProperty('keyAlias')
+
 android {
     namespace 'com.xiaomitv.dtmb'
     compileSdk 35
@@ -12,6 +33,32 @@ android {
         targetSdk 34
         versionCode 4
         versionName '1.0.0'
+        manifestPlaceholders = [appLabel: '@string/app_name']
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseStoreFile
+                storePassword keystoreProps.getProperty('storePassword').trim()
+                keyAlias keystoreProps.getProperty('keyAlias').trim()
+                keyPassword((keystoreProps.getProperty('keyPassword')
+                        ?: keystoreProps.getProperty('storePassword')).trim())
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // 独立调试包名，可与正式版在电视上共存且数据互不干扰
+            applicationIdSuffix '.debug'
+            manifestPlaceholders = [appLabel: 'OTV Debug']
+        }
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
     }
 
     compileOptions {

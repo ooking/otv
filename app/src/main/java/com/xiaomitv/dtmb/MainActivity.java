@@ -44,6 +44,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private static final String TAG = "DtmbListings";
     private static final int LISTINGS_REQUEST = 1;
     private static final int XMLTV_REQUEST = 2;
+    private static final String PREF_PERMISSION_ASKED = "listings_permission_asked";
+    private static final String STATE_AUTO_PERM_REQUESTED = "auto_perm_requested";
+    private static final String STATE_AUTO_SCAN_PROMPTED = "auto_scan_prompted";
+    private static final String STATE_MUTE_WARNED = "mute_warned";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService queries = Executors.newSingleThreadExecutor();
@@ -72,6 +76,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         }
     };
 
+    private AudioManager audioManager;
     private TvInputManager inputs;
     private TvListings listings;
     private ProgramGuide guide;
@@ -81,6 +86,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private ChannelPreviews previews;
     private MediaSession mediaSession;
     private SharedPreferences preferences;
+    private AlertDialog scanPromptDialog;
+    private RemoteHelpDialog helpDialog;
     private Set<String> favorites = Collections.emptySet();
     private Set<String> hiddenChannels = Collections.emptySet();
     private List<Long> channelOrder = Collections.emptyList();
@@ -93,7 +100,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     private boolean resumePlayback;
     private boolean observing;
     private boolean onlyFavorites;
-    private String emptyMessage = "";
+    private boolean autoPermissionRequested;
+    private boolean autoScanPrompted;
+    private boolean muteWarned;
+    private TvScreen.EmptyState emptyState = TvScreen.EmptyState.messageOnly("");
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -103,7 +113,12 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
     @Override
     public void onCreate(Bundle savedState) {
         super.onCreate(savedState);
-        emptyMessage = getString(R.string.empty_loading_channels);
+        if (savedState != null) {
+            autoPermissionRequested = savedState.getBoolean(STATE_AUTO_PERM_REQUESTED, false);
+            autoScanPrompted = savedState.getBoolean(STATE_AUTO_SCAN_PROMPTED, false);
+            muteWarned = savedState.getBoolean(STATE_MUTE_WARNED, false);
+        }
+        emptyState = TvScreen.EmptyState.messageOnly(getString(R.string.empty_loading_channels));
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         mediaSession = new MediaSession(this, TAG);
         mediaSession.setCallback(new MediaSession.Callback() {
@@ -122,6 +137,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                 playback.stop();
             }
         });
+        audioManager = getSystemService(AudioManager.class);
         inputs = getSystemService(TvInputManager.class);
         listings = new TvListings(this);
         preferences = getSharedPreferences("live_tv", MODE_PRIVATE);
@@ -132,9 +148,18 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         screen = new TvScreen(this, handler, this, previews);
         avSettings = new XiaomiAvSettings(this, screen::hidePanels);
         guide = new ProgramGuide(this, listings, handler, this::renderGuide);
-        playback = new Playback(screen.video, getSystemService(AudioManager.class), preferences, handler,
+        playback = new Playback(screen.video, audioManager, preferences, handler,
                 this);
-        playback.setXiaomiAudioEnabled(preferences.getBoolean("xiaomi_audio", false));
+        // 新安装默认开启小米音频兼容，避免小米/红米电视首次打开有画无声
+        playback.setXiaomiAudioEnabled(preferences.getBoolean("xiaomi_audio", true));
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(STATE_AUTO_PERM_REQUESTED, autoPermissionRequested);
+        outState.putBoolean(STATE_AUTO_SCAN_PROMPTED, autoScanPrompted);
+        outState.putBoolean(STATE_MUTE_WARNED, muteWarned);
     }
 
     @Override
@@ -176,6 +201,8 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     @Override
     protected void onDestroy() {
+        dismissScanPrompt();
+        dismissHelpDialog();
         if (mediaSession != null) {
             mediaSession.setActive(false);
             mediaSession.release();
@@ -317,7 +344,11 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         }
         current = ready;
         updateMediaMetadata(ready);
-        if (!notice.isEmpty()) Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
+        if (!notice.isEmpty()) {
+            Toast.makeText(this, notice, Toast.LENGTH_SHORT).show();
+        } else {
+            warnIfSystemMuted();
+        }
         preferences.edit().putLong("last_channel", id).apply();
         guide.refreshAfterTune(ready);
         if (playback.hasPreviewVideo(id)) {
@@ -431,6 +462,34 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         }
     }
 
+    private void warnIfSystemMuted() {
+        if (muteWarned || audioManager == null) return;
+        if (audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
+                || audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) <= 0) {
+            muteWarned = true;
+            Toast.makeText(this, R.string.playback_tv_muted_hint, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public void openHelp() {
+        dismissHelpDialog();
+        helpDialog = new RemoteHelpDialog(this, screen.style);
+        helpDialog.show();
+    }
+
+    private void dismissHelpDialog() {
+        if (helpDialog != null) {
+            if (helpDialog.isShowing()) helpDialog.dismiss();
+            helpDialog = null;
+        }
+    }
+
+    @Override
+    public void importXmlTv() {
+        chooseXmlTvSource();
+    }
+
     @Override
     public void programDetails(TvListings.Channel channel, TvListings.Program program) {
         screen.programDetails(channel, program);
@@ -447,6 +506,10 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private List<TvScreen.Option> optionItems() {
         List<TvScreen.Option> items = new ArrayList<>();
+        if (!canReadListings()) {
+            items.add(new TvScreen.Option(permissionActionLabel(), R.drawable.ic_guide,
+                    this::handleListingsPermissionAction));
+        }
         if (current != null) {
             items.add(new TvScreen.Option(getString(R.string.option_audio_tracks), R.drawable.ic_audio,
                     audioTrackSummary(), this::showAudioTracks));
@@ -465,19 +528,21 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     ? R.string.option_unhide_channel : R.string.option_hide_channel);
             items.add(new TvScreen.Option(hideLabel, R.drawable.ic_visibility, this::toggleCurrentChannelHidden));
         }
-        items.add(new TvScreen.Option(getString(R.string.option_channel_manager), R.drawable.ic_channels,
-                "", current != null, this::openChannelManager));
+        if (!rawChannels.isEmpty()) {
+            items.add(new TvScreen.Option(getString(R.string.option_channel_manager), R.drawable.ic_channels,
+                    "", current != null, this::openChannelManager));
+        }
         items.add(new TvScreen.Option(getString(R.string.option_language), R.drawable.ic_language,
                 AppLanguage.summary(this), this::showLanguageSettings));
-        if (!canReadListings()) {
-            items.add(new TvScreen.Option(getString(R.string.option_grant_listings_permission),
-                    R.drawable.ic_guide, this::requestListingsPermission));
-        }
+        items.add(new TvScreen.Option(getString(R.string.sidebar_help), R.drawable.ic_help,
+                this::openHelp));
         items.add(new TvScreen.Option(getString(R.string.option_xiaomi_scan), R.drawable.ic_settings,
                 getString(R.string.option_xiaomi_scan_summary), false, this::openSetup));
-        if (current != null) {
+        if (!channels.isEmpty()) {
             items.add(new TvScreen.Option(getString(R.string.option_import_xmltv),
                     R.drawable.ic_import, this::chooseXmlTvSource));
+        }
+        if (current != null) {
             items.add(new TvScreen.Option(getString(R.string.option_audio_diagnostics),
                     R.drawable.ic_audio, this::showAudioDiagnostics));
         }
@@ -700,8 +765,66 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         dialog.show();
     }
 
+    private boolean isListingsPermissionPermanentlyDenied() {
+        return !canReadListings()
+                && preferences.getBoolean(PREF_PERMISSION_ASKED, false)
+                && !shouldShowRequestPermissionRationale(TvListings.PERMISSION);
+    }
+
+    private String permissionActionLabel() {
+        return getString(isListingsPermissionPermanentlyDenied()
+                ? R.string.option_open_app_settings
+                : R.string.option_grant_listings_permission);
+    }
+
+    private void handleListingsPermissionAction() {
+        if (isListingsPermissionPermanentlyDenied()) {
+            openAppPermissionSettings();
+        } else {
+            requestListingsPermission();
+        }
+    }
+
     private void requestListingsPermission() {
+        preferences.edit().putBoolean(PREF_PERMISSION_ASKED, true).apply();
         requestPermissions(new String[]{TvListings.PERMISSION}, LISTINGS_REQUEST);
+    }
+
+    private void openAppPermissionSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", getPackageName(), null));
+        try {
+            startActivity(intent);
+            screen.hidePanels();
+        } catch (ActivityNotFoundException | SecurityException exception) {
+            Log.i(TAG, "App details settings unavailable", exception);
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.option_open_app_settings)
+                    .setMessage(R.string.app_settings_unavailable)
+                    .setPositiveButton(R.string.action_close, null)
+                    .show();
+        }
+    }
+
+    private void promptChannelScanIfNeeded() {
+        if (autoScanPrompted || !active) return;
+        autoScanPrompted = true;
+        dismissScanPrompt();
+        scanPromptDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.scan_prompt_title)
+                .setMessage(R.string.scan_prompt_msg)
+                .setPositiveButton(R.string.option_xiaomi_scan, (dialog, which) -> openSetup())
+                .setNegativeButton(R.string.action_later, null)
+                .show();
+        android.widget.Button positive = scanPromptDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (positive != null) positive.requestFocus();
+    }
+
+    private void dismissScanPrompt() {
+        if (scanPromptDialog != null) {
+            if (scanPromptDialog.isShowing()) scanPromptDialog.dismiss();
+            scanPromptDialog = null;
+        }
     }
 
     private void showAudioDiagnostics() {
@@ -774,11 +897,22 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         if (!active) return;
         cancelChannelQuery();
         if (findInput() == null) {
-            applyChannels(Collections.emptyList(), getString(R.string.empty_no_tuner));
+            applyChannels(Collections.emptyList(),
+                    TvScreen.EmptyState.messageOnly(getString(R.string.empty_no_tuner)));
             return;
         }
         if (!canReadListings()) {
-            applyChannels(Collections.emptyList(), getString(R.string.empty_no_permission));
+            // 首次进入且未被系统永久拒绝时，自动拉起系统权限请求弹窗
+            if (!autoPermissionRequested && !isListingsPermissionPermanentlyDenied()) {
+                autoPermissionRequested = true;
+                requestListingsPermission();
+                return;
+            }
+            applyChannels(Collections.emptyList(), new TvScreen.EmptyState(
+                    getString(R.string.empty_no_permission),
+                    permissionActionLabel(),
+                    R.drawable.ic_guide,
+                    this::handleListingsPermissionAction));
             return;
         }
 
@@ -791,7 +925,16 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channelQuery != signal || !active) return;
                     channelQuery = null;
                     Log.i(TAG, "visible_channels=" + result.size());
-                    applyChannels(result, getString(R.string.empty_no_dtmb_channels));
+                    applyChannels(result, new TvScreen.EmptyState(
+                            getString(R.string.empty_no_dtmb_channels),
+                            getString(R.string.option_xiaomi_scan),
+                            R.drawable.ic_settings,
+                            this::openSetup));
+                    if (result.isEmpty()) {
+                        promptChannelScanIfNeeded();
+                    } else {
+                        dismissScanPrompt();
+                    }
                 });
             } catch (OperationCanceledException ignored) {
                 // A newer request or a lifecycle change replaced this query.
@@ -801,7 +944,18 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
                     if (channelQuery != signal || !active) return;
                     channelQuery = null;
                     if (channels.isEmpty() || failure instanceof SecurityException) {
-                        applyChannels(Collections.emptyList(), getString(R.string.empty_listings_unreadable));
+                        TvScreen.EmptyState errorState = !canReadListings()
+                                ? new TvScreen.EmptyState(
+                                        getString(R.string.empty_listings_unreadable),
+                                        permissionActionLabel(),
+                                        R.drawable.ic_guide,
+                                        this::handleListingsPermissionAction)
+                                : new TvScreen.EmptyState(
+                                        getString(R.string.empty_listings_unreadable),
+                                        getString(R.string.empty_action_retry),
+                                        R.drawable.ic_refresh,
+                                        this::loadChannels);
+                        applyChannels(Collections.emptyList(), errorState);
                     } else {
                         screen.status(getString(R.string.status_channel_load_failed));
                     }
@@ -810,13 +964,21 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
         });
     }
 
-    private void applyChannels(List<TvListings.Channel> result, String message) {
+    private TvScreen.EmptyState allHiddenEmptyState() {
+        return new TvScreen.EmptyState(
+                getString(R.string.empty_all_hidden),
+                getString(R.string.option_channel_manager),
+                R.drawable.ic_channels,
+                this::openChannelManager);
+    }
+
+    private void applyChannels(List<TvListings.Channel> result, TvScreen.EmptyState state) {
         rawChannels = result;
         ChannelManager.Result channelResult = ChannelManager.apply(result, channelOrder, hiddenChannels);
         allChannels = channelResult.allSorted();
         channels = channelResult.visible();
         guide.setChannels(channels);
-        emptyMessage = message;
+        emptyState = state;
         if (result.isEmpty()) {
             current = null;
             playback.stop();
@@ -838,7 +1000,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.clearTransition();
             screen.closeGuide();
             refreshOptions();
-            emptyMessage = getString(R.string.empty_all_hidden);
+            emptyState = allHiddenEmptyState();
             renderChannels();
             if (!screen.panelOpen()) screen.showChannels();
             return;
@@ -871,7 +1033,7 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
             screen.clearTransition();
             screen.closeGuide();
             refreshOptions();
-            emptyMessage = getString(R.string.empty_all_hidden);
+            emptyState = allHiddenEmptyState();
             renderChannels();
             return;
         }
@@ -966,9 +1128,15 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void renderChannels() {
         List<TvListings.Channel> visible = visibleChannels();
-        String message = channels.isEmpty() ? emptyMessage : getString(R.string.empty_no_favorites);
+        TvScreen.EmptyState state = channels.isEmpty()
+                ? emptyState
+                : new TvScreen.EmptyState(
+                        getString(R.string.empty_no_favorites),
+                        getString(R.string.empty_action_show_all_channels),
+                        R.drawable.ic_channels,
+                        this::filter);
         long now = System.currentTimeMillis();
-        screen.channels(visible, favorites, currentId(), onlyFavorites, message,
+        screen.channels(visible, favorites, currentId(), onlyFavorites, state,
                 channel -> nowPlaying(channel, now));
     }
 

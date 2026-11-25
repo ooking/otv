@@ -34,14 +34,18 @@ final class ChannelSidebar {
     private final Button filterBtn;
     private final Button guideBtn;
     private final Button optionsBtn;
+    private final Button helpBtn;
     private boolean showingFavorites;
 
     // 中部横向电视频道走马灯 (图 2 底部横向频道卡片)
     private final HorizontalScrollView scroll;
     private final LinearLayout cardsContainer;
 
-    // 提示及空状态
+    // 提示及空状态操作区
+    private final LinearLayout emptyContainer;
     private final TextView emptyText;
+    private final Button emptyActionBtn;
+    private Runnable emptyAction;
 
     private List<Channel> channels = Collections.emptyList();
     private Set<String> favorites = Collections.emptySet();
@@ -73,16 +77,49 @@ final class ChannelSidebar {
         filterBtn = style.capsuleButton(context.getString(R.string.sidebar_all_channels), R.drawable.ic_channels, actions::filter);
         guideBtn = style.capsuleButton(context.getString(R.string.sidebar_guide), R.drawable.ic_guide, actions::openGuide);
         optionsBtn = style.capsuleButton(context.getString(R.string.sidebar_options), R.drawable.ic_settings, actions::options);
+        helpBtn = style.capsuleButton(context.getString(R.string.sidebar_help), R.drawable.ic_help, actions::openHelp);
 
         addCapsule(controlsRow, filterBtn);
         addCapsule(controlsRow, guideBtn);
         addCapsule(controlsRow, optionsBtn);
+        addCapsule(controlsRow, helpBtn);
 
-        // 2. 空状态提示
-        emptyText = style.text(16, TvStyle.MUTED, false);
-        emptyText.setPadding(style.dp(8), style.dp(16), style.dp(8), style.dp(16));
-        emptyText.setVisibility(View.GONE);
-        view.addView(emptyText);
+        // 右侧展示当前版本号与 Release / Debug 类型徽标
+        View spacer = new View(context);
+        spacer.setFocusable(false);
+        spacer.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        controlsRow.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+
+        boolean debugBuild = AppVersion.isDebug(context);
+        TextView versionBadge = style.text(12, debugBuild ? 0xfffbbf24 : 0xff94a3b8, true);
+        versionBadge.setText(AppVersion.badgeText(context));
+        versionBadge.setFocusable(false);
+        versionBadge.setPadding(style.dp(10), style.dp(4), style.dp(10), style.dp(4));
+        versionBadge.setBackground(style.surface(
+                debugBuild ? 0x33f59e0b : 0x66222530,
+                12,
+                debugBuild ? 0x66f59e0b : 0x28ffffff));
+        controlsRow.addView(versionBadge, new LinearLayout.LayoutParams(-2, -2));
+
+        // 2. 空状态提示与快捷操作按钮
+        emptyContainer = new LinearLayout(context);
+        emptyContainer.setOrientation(LinearLayout.VERTICAL);
+        emptyContainer.setPadding(style.dp(4), style.dp(10), style.dp(4), style.dp(8));
+        emptyContainer.setVisibility(View.GONE);
+
+        emptyText = style.text(16, 0xffc4c8d6, false);
+        emptyContainer.addView(emptyText, new LinearLayout.LayoutParams(-1, -2));
+
+        emptyActionBtn = style.capsuleButton("", () -> {
+            if (emptyAction != null) emptyAction.run();
+        });
+        emptyActionBtn.setTextSize(15);
+        emptyActionBtn.setPadding(style.dp(18), style.dp(9), style.dp(18), style.dp(9));
+        emptyActionBtn.setVisibility(View.GONE);
+        LinearLayout.LayoutParams emptyBtnParams = new LinearLayout.LayoutParams(-2, -2);
+        emptyBtnParams.topMargin = style.dp(12);
+        emptyContainer.addView(emptyActionBtn, emptyBtnParams);
+        view.addView(emptyContainer, new LinearLayout.LayoutParams(-1, -2));
 
         // 3. 横向电视频道卡片走马灯
         scroll = new HorizontalScrollView(context);
@@ -100,26 +137,25 @@ final class ChannelSidebar {
         view.addView(scroll, new LinearLayout.LayoutParams(-1, -2));
 
         // 按键导航绑定
-        filterBtn.setOnKeyListener((v, keyCode, event) -> {
+        View.OnKeyListener topRowDownListener = (v, keyCode, event) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCard(selectedId);
+                focusPrimaryContent();
                 return true;
             }
             return false;
-        });
-        guideBtn.setOnKeyListener((v, keyCode, event) -> {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCard(selectedId);
+        };
+        filterBtn.setOnKeyListener(topRowDownListener);
+        guideBtn.setOnKeyListener(topRowDownListener);
+        optionsBtn.setOnKeyListener(topRowDownListener);
+        helpBtn.setOnKeyListener(topRowDownListener);
+        emptyActionBtn.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
+                filterBtn.requestFocus();
                 return true;
             }
-            return false;
-        });
-        optionsBtn.setOnKeyListener((v, keyCode, event) -> {
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
-                focusCard(selectedId);
-                return true;
-            }
-            return false;
+            return keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                    || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                    || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
         });
     }
 
@@ -143,8 +179,11 @@ final class ChannelSidebar {
     }
 
     void update(List<Channel> channels, Set<String> favorites, long playingId, boolean onlyFavorites,
-                String message, Function<Channel, Program> nowPlaying) {
+                TvScreen.EmptyState emptyState, Function<Channel, Program> nowPlaying) {
         boolean cardHadFocus = cardsContainer.hasFocus();
+        boolean actionWasVisible = emptyActionBtn.getVisibility() == View.VISIBLE;
+        boolean actionHadFocus = emptyActionBtn.hasFocus();
+        boolean sidebarHasFocus = view.hasFocus();
         long focusId = this.playingId == playingId ? selectedId : playingId;
         this.channels = channels;
         this.favorites = favorites;
@@ -157,12 +196,34 @@ final class ChannelSidebar {
             style.setLeadingIcon(filterBtn,
                     onlyFavorites ? R.drawable.ic_favorite : R.drawable.ic_channels, 16);
         }
-        emptyText.setText(message);
-        emptyText.setVisibility(channels.isEmpty() ? View.VISIBLE : View.GONE);
+        emptyText.setText(emptyState.message());
+        emptyAction = emptyState.action();
+        boolean showAction = channels.isEmpty() && emptyState.hasAction();
+        if (showAction) {
+            emptyActionBtn.setText(emptyState.actionLabel());
+            if (emptyState.iconRes() != 0) {
+                style.setLeadingIcon(emptyActionBtn, emptyState.iconRes(), 16);
+            } else {
+                emptyActionBtn.setCompoundDrawablesRelative(null, null, null, null);
+            }
+            emptyActionBtn.setVisibility(View.VISIBLE);
+        } else {
+            emptyActionBtn.setVisibility(View.GONE);
+        }
+        emptyContainer.setVisibility(channels.isEmpty() ? View.VISIBLE : View.GONE);
         scroll.setVisibility(channels.isEmpty() ? View.GONE : View.VISIBLE);
 
         buildCards();
-        if (cardHadFocus && !focusCard(focusId)) filterBtn.requestFocus();
+        if (channels.isEmpty()) {
+            // 空状态按钮出现或原本聚焦于内容区时，自动引导焦点至主操作按钮
+            if (showAction && (cardHadFocus || actionHadFocus || (!actionWasVisible && sidebarHasFocus))) {
+                emptyActionBtn.requestFocus();
+            } else if ((cardHadFocus || actionHadFocus) && !focusEmptyAction()) {
+                filterBtn.requestFocus();
+            }
+        } else if ((cardHadFocus || actionHadFocus) && !focusCard(focusId)) {
+            filterBtn.requestFocus();
+        }
     }
 
     private void buildCards() {
@@ -334,16 +395,30 @@ final class ChannelSidebar {
 
     void restoreFocus(View previousFocus) {
         if (previousFocus != null
-                && (previousFocus.getParent() == cardsContainer || previousFocus.getParent() == controlsRow)
+                && previousFocus.getVisibility() == View.VISIBLE
+                && (previousFocus.getParent() == cardsContainer
+                || previousFocus.getParent() == controlsRow
+                || previousFocus == emptyActionBtn)
                 && previousFocus.requestFocus()) {
             return;
         }
-        if (!focusCard(selectedId)) filterBtn.requestFocus();
+        if (!focusCard(selectedId) && !focusEmptyAction()) filterBtn.requestFocus();
     }
 
     void focusInitial() {
         selectedId = -1;
-        if (!focusCard(playingId)) filterBtn.requestFocus();
+        if (!focusCard(playingId) && !focusEmptyAction()) filterBtn.requestFocus();
+    }
+
+    private boolean focusPrimaryContent() {
+        if (!channels.isEmpty()) return focusCard(selectedId);
+        return focusEmptyAction();
+    }
+
+    private boolean focusEmptyAction() {
+        return emptyContainer.getVisibility() == View.VISIBLE
+                && emptyActionBtn.getVisibility() == View.VISIBLE
+                && emptyActionBtn.requestFocus();
     }
 
     private boolean focusCard(long preferredId) {

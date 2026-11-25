@@ -10,6 +10,7 @@
     <string name="action_enable">Enable</string>
     <string name="action_disable">Disable</string>
     <string name="action_import">Import</string>
+    <string name="action_later">Later</string>
 
     <!-- Language Settings -->
     <string name="option_language">Language</string>
@@ -20,7 +21,7 @@
     <!-- Options Panel -->
     <string name="options_title">Settings &amp; Options</string>
     <string name="options_subtitle">Press OK to select · Back to close</string>
-    <string name="options_footer">OTV · DTMB Playback Engine</string>
+    <string name="options_footer">OTV %1$s (%2$s) · DTMB Playback Engine</string>
     <string name="option_audio_tracks">Audio &amp; Tracks</string>
     <string name="option_subtitles">Subtitles</string>
     <string name="option_picture_settings">Picture Settings</string>
@@ -31,6 +32,7 @@
     <string name="option_unhide_channel">Unhide Current Channel</string>
     <string name="option_channel_manager">Channel Manager (Sort &amp; Hide)</string>
     <string name="option_grant_listings_permission">Grant TV Listings Permission</string>
+    <string name="option_open_app_settings">Open App Permission Settings</string>
     <string name="option_xiaomi_scan">Scan Channels in Xiaomi Live TV</string>
     <string name="option_xiaomi_scan_summary">Open DTMB TV, then press Menu to scan</string>
     <string name="option_import_xmltv">Import XMLTV Guide</string>
@@ -42,6 +44,7 @@
     <string name="sidebar_all_channels">All Channels</string>
     <string name="sidebar_guide">Program Guide (EPG)</string>
     <string name="sidebar_options">Settings</string>
+    <string name="sidebar_help">Remote Help</string>
     <string name="sidebar_filter_favorites">Channels: Favorites</string>
     <string name="sidebar_filter_all">Channels: All</string>
     <string name="badge_playing">● Playing</string>
@@ -50,12 +53,17 @@
     <string name="sidebar_no_program">No program info</string>
     <string name="empty_loading_channels">Loading channels…</string>
     <string name="empty_no_tuner">MediaTek tuner input not found on this Xiaomi TV.</string>
-    <string name="empty_no_permission">Please grant TV Listings permission in Options. If previously denied, enable it in system App Info.</string>
+    <string name="empty_no_permission">TV Listings permission is required to read your channels.</string>
     <string name="empty_no_dtmb_channels">No readable DTMB channels found. Please scan channels in Xiaomi Live TV first, then return to OTV.</string>
     <string name="empty_listings_unreadable">Unable to read system channel data. Please check TV Listings permission and try again.</string>
     <string name="status_channel_load_failed">Failed to load channels. Reopen OTV to retry.</string>
-    <string name="empty_all_hidden">All channels are hidden. Restore them in Options → Channel Manager.</string>
+    <string name="empty_all_hidden">All channels are hidden. Restore them in Channel Manager.</string>
     <string name="empty_no_favorites">No favorite channels yet.</string>
+    <string name="empty_action_show_all_channels">Show All Channels</string>
+    <string name="empty_action_retry">Retry</string>
+    <string name="scan_prompt_title">No TV Channels Found</string>
+    <string name="scan_prompt_msg">No DTMB channels detected yet. Please scan channels in the built-in Xiaomi Live TV app, then press Back to return to OTV.</string>
+    <string name="app_settings_unavailable">System App Info is unavailable on this TV. Please grant TV Listings permission manually in system Settings.</string>
     <string name="default_channel_name">Channel %1$d</string>
 
     <!-- Channel Manager Dialog -->
@@ -97,7 +105,8 @@
     <string name="guide_group_all">All Channels</string>
     <string name="guide_duration_minutes">(%1$d min)</string>
     <string name="guide_no_description">No detailed description available.</string>
-    <string name="guide_no_epg_slot">No broadcast schedule or EPG data available for this time slot.</string>
+    <string name="guide_no_epg_slot">No EPG data for this slot · Press [OK] to import an XMLTV guide</string>
+    <string name="guide_empty_slot_switch_channel">Switch to This Channel</string>
     <string name="guide_ruler_time">Time</string>
     <string name="guide_clock_format">yyyy/MM/dd (E) HH:mm</string>
     <string name="guide_hour_format">HH:00</string>
@@ -148,7 +157,7 @@
     <string name="xiaomi_av_unavailable">This entry is not exposed by the firmware. Please open %1$s in the built-in Live TV app.</string>
     <string name="xiaomi_scan_unavailable">This firmware cannot open DTMB directly. Please switch to the DTMB input source and press Menu to scan. OTV will load channels automatically when you return.</string>
     <string name="xiaomi_audio_title">Xiaomi Audio Compatibility</string>
-    <string name="xiaomi_audio_msg">For Xiaomi TVs where DTMB has video but no sound. Controls TV input audio based on audio focus and media mute state during playback.</string>
+    <string name="xiaomi_audio_msg">For Xiaomi / Redmi TVs where DTMB has video but no sound. Controls TV input audio based on audio focus and media mute state during playback.</string>
     <string name="diag_retry_audio">Retry Audio</string>
     <string name="diag_report">Playback State  %1$s\nKeep Screen On  %2$s\nAudio Focus  %3$s\nTIF Volume  %4$s\nReported Audio Tracks  %5$d\n%6$s\nConfirm audio output directly on the TV.</string>
     <string name="diag_keep_on_enabled">On (prevents sleep &amp; screensaver)</string>
@@ -177,9 +186,56 @@
     <string name="playback_recovered">Channel switch failed; returned to previous channel</string>
     <string name="playback_tune_timeout">Tuning timed out. Retry from the menu.</string>
     <string name="playback_video_height">%1$dp</string>
+    <string name="playback_tv_muted_hint">TV media volume is muted or 0. Press Volume Up on your remote.</string>
     <string name="focus_not_requested">Not requested</string>
     <string name="focus_granted">Granted</string>
     <string name="focus_delayed">Pending system allocation</string>
     <string name="focus_denied">Denied by system</string>
     <string name="focus_lost">Lost</string>
+
+    <!-- Remote Control Guide -->
+    <string name="help_dialog_title">Remote Control Guide</string>
+    <string name="help_dialog_subtitle">Press D-pad or Menu to highlight keys · Press OK or Back to close</string>
+    <string name="help_badge_channel">Zapping</string>
+    <string name="help_badge_info">Details</string>
+    <string name="help_badge_guide">EPG Guide</string>
+    <string name="help_badge_core">Primary</string>
+    <string name="help_badge_menu">Settings</string>
+    <string name="help_badge_nav">Back / Exit</string>
+    <string name="help_badge_system">System</string>
+    <string name="help_badge_volume">Volume</string>
+    <string name="help_slot_fullscreen">Fullscreen</string>
+    <string name="help_slot_panel">In Panels</string>
+    <string name="help_slot_system">TV System</string>
+    <string name="help_key_power">Power</string>
+    <string name="help_power_desc">Put Xiaomi TV to sleep or wake it up</string>
+    <string name="help_key_voice">Voice</string>
+    <string name="help_voice_desc">Hold to speak to XiaoAi voice assistant</string>
+    <string name="help_key_up">Up</string>
+    <string name="help_up_full">Switch channel up</string>
+    <string name="help_up_panel">Move focus up</string>
+    <string name="help_key_down">Down</string>
+    <string name="help_down_full">Switch channel down</string>
+    <string name="help_down_panel">Move focus down</string>
+    <string name="help_key_left">Left</string>
+    <string name="help_left_full">Program info / full text</string>
+    <string name="help_left_panel">Move left / Sort up</string>
+    <string name="help_key_right">Right</string>
+    <string name="help_right_full">Open EPG Guide</string>
+    <string name="help_right_panel">Move right / Sort down</string>
+    <string name="help_key_ok">OK / Select</string>
+    <string name="help_ok_full">Open Channel Bar</string>
+    <string name="help_ok_panel">Select / Confirm</string>
+    <string name="help_key_home">Home</string>
+    <string name="help_home_desc">Return to TV Home screen</string>
+    <string name="help_key_back">Back</string>
+    <string name="help_back_panel">Close open panel</string>
+    <string name="help_back_full">Exit OTV</string>
+    <string name="help_key_menu">Menu</string>
+    <string name="help_menu_full">Audio / Subs / Picture</string>
+    <string name="help_menu_panel">Open Settings drawer</string>
+    <string name="help_key_vol_up">Volume +</string>
+    <string name="help_vol_up_desc">Increase TV media volume</string>
+    <string name="help_key_vol_down">Volume -</string>
+    <string name="help_vol_down_desc">Decrease TV media volume</string>
 </resources>

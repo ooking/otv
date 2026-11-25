@@ -21,9 +21,15 @@ final class XiaomiTvAudio {
         this.lastRequest = context.getString(R.string.diag_not_sent);
     }
 
+    // 兼容小米与 Redmi 全系电视机型
     boolean supported() {
-        return "xiaomi".equalsIgnoreCase(Build.MANUFACTURER)
-                && Build.MODEL.startsWith("MiTV-");
+        return isXiaomiFamily(Build.MANUFACTURER)
+                || isXiaomiFamily(Build.BRAND)
+                || (Build.MODEL != null && Build.MODEL.startsWith("MiTV-"));
+    }
+
+    private static boolean isXiaomiFamily(String value) {
+        return "xiaomi".equalsIgnoreCase(value) || "redmi".equalsIgnoreCase(value);
     }
 
     boolean enabled() {

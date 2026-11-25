@@ -8,6 +8,7 @@
     <string name="action_enable">开启</string>
     <string name="action_disable">关闭</string>
     <string name="action_import">导入</string>
+    <string name="action_later">稍后</string>
 
     <!-- 语言设置 -->
     <string name="option_language">语言</string>
@@ -18,7 +19,7 @@
     <!-- 选项面板 -->
     <string name="options_title">设置与选项</string>
     <string name="options_subtitle">按 OK 键进入设置 · 返回键关闭</string>
-    <string name="options_footer">OTV · DTMB 播放核心</string>
+    <string name="options_footer">OTV %1$s (%2$s) · DTMB 播放核心</string>
     <string name="option_audio_tracks">声道与音轨</string>
     <string name="option_subtitles">字幕</string>
     <string name="option_picture_settings">图像设置</string>
@@ -29,6 +30,7 @@
     <string name="option_unhide_channel">恢复当前频道显示</string>
     <string name="option_channel_manager">频道管理（排序与隐藏）</string>
     <string name="option_grant_listings_permission">授予电视节目权限</string>
+    <string name="option_open_app_settings">打开应用权限设置</string>
     <string name="option_xiaomi_scan">前往小米直播搜台</string>
     <string name="option_xiaomi_scan_summary">打开地面数字电视后，按菜单键选择搜台</string>
     <string name="option_import_xmltv">导入 XMLTV 节目表</string>
@@ -40,6 +42,7 @@
     <string name="sidebar_all_channels">全部频道</string>
     <string name="sidebar_guide">节目指南 (EPG)</string>
     <string name="sidebar_options">设置选项</string>
+    <string name="sidebar_help">按键帮助</string>
     <string name="sidebar_filter_favorites">频道: 收藏</string>
     <string name="sidebar_filter_all">频道: 全部</string>
     <string name="badge_playing">● 播放中</string>
@@ -48,12 +51,17 @@
     <string name="sidebar_no_program">暂无节目资料</string>
     <string name="empty_loading_channels">正在读取频道…</string>
     <string name="empty_no_tuner">未发现小米电视的 MediaTek 调谐器输入。</string>
-    <string name="empty_no_permission">请在「选项」中授予电视节目权限。曾拒绝授权时，可从系统应用详情开启。</string>
+    <string name="empty_no_permission">需要「电视节目」权限才能读取频道列表。</string>
     <string name="empty_no_dtmb_channels">没有可读取的 DTMB 频道。请先在小米电视自带的直播应用中搜台，返回后会自动读取频道。</string>
     <string name="empty_listings_unreadable">系统频道数据不可读，请检查电视节目权限后重试。</string>
     <string name="status_channel_load_failed">频道读取失败，重新进入 OTV 可重试</string>
-    <string name="empty_all_hidden">所有频道均已隐藏，可在「选项」-「频道管理」中恢复。</string>
+    <string name="empty_all_hidden">所有频道均已隐藏，可在「频道管理」中恢复显示。</string>
     <string name="empty_no_favorites">还没有收藏频道。</string>
+    <string name="empty_action_show_all_channels">查看全部频道</string>
+    <string name="empty_action_retry">重新读取</string>
+    <string name="scan_prompt_title">未发现电视频道</string>
+    <string name="scan_prompt_msg">尚未检测到地面数字电视频道。请前往小米电视自带的直播应用完成搜台，完成后按返回键回到 OTV 即可自动加载频道。</string>
+    <string name="app_settings_unavailable">此电视未提供系统应用详情页，请从电视系统设置中手动授予电视节目权限。</string>
     <string name="default_channel_name">频道 %1$d</string>
 
     <!-- 频道管理对话框 -->
@@ -95,7 +103,8 @@
     <string name="guide_group_all">全部频道</string>
     <string name="guide_duration_minutes">(%1$d分钟)</string>
     <string name="guide_no_description">暂无详细内容介绍。</string>
-    <string name="guide_no_epg_slot">此时间段暂未获取到电台的节目单广播或网络 EPG 资料。</string>
+    <string name="guide_no_epg_slot">此时间段暂无节目单资料 · 按 [OK] 键可导入 XMLTV 节目源</string>
+    <string name="guide_empty_slot_switch_channel">切换到此频道</string>
     <string name="guide_ruler_time">时间</string>
     <string name="guide_clock_format">yyyy/MM/dd(E) HH:mm</string>
     <string name="guide_hour_format">HH时</string>
@@ -146,7 +155,7 @@
     <string name="xiaomi_av_unavailable">当前系统未开放此入口，请在电视自带的直播应用中打开%1$s。</string>
     <string name="xiaomi_scan_unavailable">此固件无法直接打开地面数字电视。请从电视的输入源进入地面数字电视，按菜单键选择搜台。回到 OTV 后会自动读取频道。</string>
     <string name="xiaomi_audio_title">小米音频兼容</string>
-    <string name="xiaomi_audio_msg">用于小米电视 DTMB 有画面但无声的情况。播放时按音频焦点和媒体静音状态控制电视输入音频。</string>
+    <string name="xiaomi_audio_msg">用于小米 / 红米电视 DTMB 有画面但无声的情况。播放时按音频焦点和媒体静音状态控制电视输入音频。</string>
     <string name="diag_retry_audio">重试音频</string>
     <string name="diag_report">播放状态  %1$s\n屏幕常亮  %2$s\n音频焦点  %3$s\nTIF 音量  %4$s\n会话报告的音轨数  %5$d\n%6$s\n电视是否出声需现场确认。</string>
     <string name="diag_keep_on_enabled">已开启（防止待机与屏保）</string>
@@ -175,9 +184,56 @@
     <string name="playback_recovered">换台失败，已返回上一频道</string>
     <string name="playback_tune_timeout">调谐超时，可从菜单重新调谐</string>
     <string name="playback_video_height">%1$d 线</string>
+    <string name="playback_tv_muted_hint">当前电视媒体音量为 0，请按遥控器音量+键调高音量</string>
     <string name="focus_not_requested">未请求</string>
     <string name="focus_granted">已取得</string>
     <string name="focus_delayed">等待系统分配</string>
     <string name="focus_denied">系统未授予</string>
     <string name="focus_lost">已失去</string>
+
+    <!-- 遥控器按键帮助 -->
+    <string name="help_dialog_title">遥控器按键帮助</string>
+    <string name="help_dialog_subtitle">按方向键或菜单键可联动高亮对应按键 · 按 OK 键或返回键关闭</string>
+    <string name="help_badge_channel">切台与导航</string>
+    <string name="help_badge_info">节目详情</string>
+    <string name="help_badge_guide">电子节目表</string>
+    <string name="help_badge_core">核心操作</string>
+    <string name="help_badge_menu">影音与设置</string>
+    <string name="help_badge_nav">返回与退出</string>
+    <string name="help_badge_system">系统按键</string>
+    <string name="help_badge_volume">音量控制</string>
+    <string name="help_slot_fullscreen">全屏播放时</string>
+    <string name="help_slot_panel">面板打开时</string>
+    <string name="help_slot_system">电视系统动作</string>
+    <string name="help_key_power">电源键</string>
+    <string name="help_power_desc">待机休眠或唤醒小米电视</string>
+    <string name="help_key_voice">语音键</string>
+    <string name="help_voice_desc">按住说话，呼出小爱同学语音助手</string>
+    <string name="help_key_up">上键</string>
+    <string name="help_up_full">向上切换频道</string>
+    <string name="help_up_panel">向上移动焦点</string>
+    <string name="help_key_down">下键</string>
+    <string name="help_down_full">向下切换频道</string>
+    <string name="help_down_panel">向下移动焦点</string>
+    <string name="help_key_left">左键</string>
+    <string name="help_left_full">查看节目简介 / 全文</string>
+    <string name="help_left_panel">列表左移 / 排序上移</string>
+    <string name="help_key_right">右键</string>
+    <string name="help_right_full">打开节目指南 (EPG)</string>
+    <string name="help_right_panel">列表右移 / 排序下移</string>
+    <string name="help_key_ok">确定键 (OK)</string>
+    <string name="help_ok_full">打开底部频道预览栏</string>
+    <string name="help_ok_panel">确认切台 / 进入选项</string>
+    <string name="help_key_home">主页键</string>
+    <string name="help_home_desc">退回电视系统桌面并暂停直播</string>
+    <string name="help_key_back">返回键</string>
+    <string name="help_back_panel">关闭当前浮层面板</string>
+    <string name="help_back_full">退出 OTV 应用</string>
+    <string name="help_key_menu">菜单键</string>
+    <string name="help_menu_full">音轨 / 字幕 / 画质设置</string>
+    <string name="help_menu_panel">打开右侧设置抽屉</string>
+    <string name="help_key_vol_up">音量 +</string>
+    <string name="help_vol_up_desc">调高电视媒体播放音量</string>
+    <string name="help_key_vol_down">音量 -</string>
+    <string name="help_vol_down_desc">调低电视媒体播放音量</string>
 </resources>
