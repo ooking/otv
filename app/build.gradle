@@ -41,7 +41,7 @@ android {
         minSdk 26
         targetSdk 34
         versionCode 5
-        versionName '1.0.5'
+        versionName '1.1.0'
         // 支持通过 -PappVersionName=x.y.z 动态覆盖编译进 APK 的版本号（如 GitHub Actions 手动填写标签时）
         if (project.hasProperty('appVersionName')) {
             def customVer = project.property('appVersionName').toString().trim().replaceFirst(/^[vV]/, '')

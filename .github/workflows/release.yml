@@ -121,38 +121,84 @@ jobs:
           ).splitlines()
           prev_tag = next((t.strip() for t in tags_out if t.strip() and t.strip() not in same_ver), "")
 
-          # 读取区间内的提交记录
-          cmd = ["git", "log", "--no-merges", "--pretty=format:%s\t%h"]
+          # 读取区间内的完整提交消息体（使用 NUL 分隔每条 commit，逐行解析避免多行提交挤在同一行）
+          cmd = ["git", "log", "--no-merges", "--pretty=format:%h%x09%B%x00"]
           if prev_tag:
               cmd.append(f"{prev_tag}..HEAD")
           else:
               cmd.extend(["-n", "30"])
-          raw_commits = subprocess.check_output(cmd, text=True).splitlines()
+          raw_log = subprocess.check_output(cmd, text=True)
 
           groups = {
               "新增功能": [],
               "体验优化": [],
               "问题修复": [],
-              "其他更新": [],
           }
+          seen_texts = set()
 
-          for line in raw_commits:
-              if "\t" not in line:
+          # 开发者内部工程类提交类型（终端用户不关心，直接忽略）
+          IGNORE_TYPES = re.compile(
+              r"^(build|docs?|test|tests|ci|chore|style|deps|revert)\b",
+              re.IGNORECASE,
+          )
+          # 即使被 AI 误标为 feat/fix，只要属于纯构建/文档/配置/单测/泛化套话也自动过滤
+          IGNORE_CONTENT = re.compile(
+              r"(keystore|github\s*actions|workflow|gradle|readme|发布配置指南|签名文档|文档|示例文件|"
+              r"单元测试|单测|校验和|\.sh\b|构建.*脚本|初始化.*脚本|安装.*脚本|更新版本号|矢量图|"
+              r"^添加新的?功能以增强用户体验$)",
+              re.IGNORECASE,
+          )
+
+          for entry in raw_log.split("\x00"):
+              entry = entry.strip()
+              if not entry or "\t" not in entry:
                   continue
-              subject, short_hash = line.split("\t", 1)
-              subject = subject.strip()
-              if not subject:
-                  continue
-              cleaned = re.sub(r"^[^\w\u4e00-\u9fff]+", "", subject).strip()
-              item = f"- {subject} (`{short_hash}`)"
-              if re.match(r"^(新增|feat\b)", cleaned, re.IGNORECASE):
-                  groups["新增功能"].append(item)
-              elif re.match(r"^(优化|重构|perf\b|refactor\b)", cleaned, re.IGNORECASE):
-                  groups["体验优化"].append(item)
-              elif re.match(r"^(修复|fix\b)", cleaned, re.IGNORECASE):
-                  groups["问题修复"].append(item)
-              else:
-                  groups["其他更新"].append(item)
+              short_hash, body = entry.split("\t", 1)
+              short_hash = short_hash.strip()
+
+              # 若单行内被拼入了多个 emoji 类型前缀，也自动切分为独立行处理
+              normalized_body = re.sub(
+                  r"\s+(?=[✨🐛⚡🔨📝✅♻️⬆️🔧🚀]\s*[a-zA-Z]+:)", "\n", body
+              )
+
+              for raw_line in normalized_body.splitlines():
+                  line = raw_line.strip().lstrip("-*• ").strip()
+                  if not line:
+                      continue
+
+                  # 去掉开头的 emoji 或符号
+                  no_emoji = re.sub(r"^[^\w\u4e00-\u9fff]+", "", line).strip()
+                  if not no_emoji:
+                      continue
+
+                  # 优先过滤工程杂项前缀（build / docs / test / ci / chore / deps 等）
+                  if IGNORE_TYPES.match(no_emoji):
+                      continue
+
+                  # 识别用户关心的业务变更分类，并剥离前缀保留干净正文
+                  category = None
+                  m = re.match(
+                      r"^(新增|feat|优化|重构|perf|refactor|improve|修复|fix)\s*[:：]\s*(.+)$",
+                      no_emoji,
+                      re.IGNORECASE,
+                  )
+                  if m:
+                      prefix, content = m.group(1).lower(), m.group(2).strip()
+                      if prefix in ("新增", "feat"):
+                          category = "新增功能"
+                      elif prefix in ("优化", "重构", "perf", "refactor", "improve"):
+                          category = "体验优化"
+                      elif prefix in ("修复", "fix"):
+                          category = "问题修复"
+                  else:
+                      continue
+
+                  if not content or IGNORE_CONTENT.search(content):
+                      continue
+                  if content in seen_texts:
+                      continue
+                  seen_texts.add(content)
+                  groups[category].append(f"- {content} (`{short_hash}`)")
 
           sections = []
           if extra_notes:
