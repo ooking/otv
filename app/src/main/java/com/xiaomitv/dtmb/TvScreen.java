@@ -143,9 +143,12 @@ final class TvScreen {
         options.addView(optionsList, optionsParams);
 
         boolean debugBuild = AppVersion.isDebug(activity);
-        TextView optFooter = style.text(12, debugBuild ? 0xfffbbf24 : 0xff94a3b8, true);
-        optFooter.setText(activity.getString(R.string.options_footer,
-                AppVersion.versionTag(activity), AppVersion.buildType(activity)));
+        TextView optFooter = style.text(12, debugBuild ? 0xfffbbf24 : 0xff8c92a4, true);
+        optFooter.setTextSize(11.5f);
+        optFooter.setFontFeatureSettings("tnum");
+        optFooter.setSingleLine(true);
+        style.trim(optFooter, 1);
+        optFooter.setText(activity.getString(R.string.options_footer, AppVersion.badgeText(activity)));
         optFooter.setGravity(Gravity.CENTER);
         optFooter.setPadding(0, style.dp(10), 0, 0);
         options.addView(optFooter);

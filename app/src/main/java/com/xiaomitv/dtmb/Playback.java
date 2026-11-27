@@ -32,6 +32,7 @@ final class Playback {
     private final TvView view;
     private final AudioManager audio;
     private final XiaomiTvAudio xiaomiAudio;
+    private final BroadcastAudioTracks audioTracks;
     private final BroadcastSubtitles subtitles;
     private final Handler handler;
     private final Listener listener;
@@ -67,6 +68,7 @@ final class Playback {
         this.state = context.getString(R.string.playback_not_playing);
         this.focusState = context.getString(R.string.focus_not_requested);
         xiaomiAudio = new XiaomiTvAudio(context, audio);
+        audioTracks = new BroadcastAudioTracks(view, preferences);
         subtitles = new BroadcastSubtitles(view, preferences);
         this.handler = handler;
         this.listener = listener;
@@ -82,7 +84,7 @@ final class Playback {
                 } else {
                     setState(context.getString(R.string.playback_video_ready), "");
                     applyVolume("video_available");
-                    restoreSubtitles();
+                    reconcileTracks();
                     updatePlaybackActive(true);
                 }
             }
@@ -151,7 +153,7 @@ final class Playback {
                 setState(videoAvailable ? context.getString(R.string.playback_video_ready) : message,
                         videoAvailable ? "" : message);
                 applyVolume("content_allowed");
-                restoreSubtitles();
+                reconcileTracks();
                 if (videoAvailable) {
                     lastReadyChannel = channelId;
                     updatePlaybackActive(true);
@@ -170,7 +172,7 @@ final class Playback {
                 }
                 Log.i(TAG, "audio_tracks channel=" + channelId + " count=" + audioTrackCount);
                 Log.i(TAG, "subtitle_tracks channel=" + channelId + " count=" + subtitleTrackCount);
-                restoreSubtitles();
+                reconcileTracks();
                 listener.onTrackStateChanged();
             }
 
@@ -179,8 +181,10 @@ final class Playback {
                 if (!isActive(inputId)) return;
                 if (type == TvTrackInfo.TYPE_AUDIO) {
                     Log.i(TAG, "audio_track_selected channel=" + channelId + " track=" + trackId);
+                    reconcileAudioTracks();
                 } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
                     Log.i(TAG, "subtitle_selected channel=" + channelId + " track=" + trackId);
+                    reconcileSubtitles();
                 } else {
                     return;
                 }
@@ -231,8 +235,21 @@ final class Playback {
         return tracks == null ? Collections.emptyList() : tracks;
     }
 
-    private void restoreSubtitles() {
-        if (videoAvailable && !contentBlocked) subtitles.restore(subtitleTracks());
+    private void reconcileTracks() {
+        reconcileAudioTracks();
+        reconcileSubtitles();
+    }
+
+    private void reconcileAudioTracks() {
+        if ((videoAvailable || audioOnly) && !contentBlocked) {
+            audioTracks.reconcile(audioTracks(), selectedAudioTrack());
+        }
+    }
+
+    private void reconcileSubtitles() {
+        if (videoAvailable && !contentBlocked) {
+            subtitles.reconcile(subtitleTracks(), selectedSubtitleTrack());
+        }
     }
 
     String selectedAudioTrack() {
@@ -240,21 +257,10 @@ final class Playback {
     }
 
     boolean selectAudioTrack(long expectedChannel, String trackId) {
-        if (channelId != expectedChannel) return false;
-        for (TvTrackInfo track : audioTracks()) {
-            if (!trackId.equals(track.getId())) continue;
-            if (!trackId.equals(selectedAudioTrack())) {
-                try {
-                    view.selectTrack(TvTrackInfo.TYPE_AUDIO, trackId);
-                    Log.i(TAG, "audio_track_requested channel=" + channelId + " track=" + trackId);
-                } catch (IllegalArgumentException | IllegalStateException exception) {
-                    Log.w(TAG, "Audio track is no longer available", exception);
-                    return false;
-                }
-            }
-            return true;
+        if (channelId != expectedChannel || (!videoAvailable && !audioOnly) || contentBlocked) {
+            return false;
         }
-        return false;
+        return audioTracks.select(expectedChannel, trackId, audioTracks(), selectedAudioTrack());
     }
 
     long requestedChannelId() {
@@ -283,6 +289,7 @@ final class Playback {
         channelId = id;
         tuning = true;
         submitted = false;
+        audioTracks.reset(id);
         subtitles.reset(id);
         videoAvailable = false;
         audioOnly = false;
@@ -326,7 +333,7 @@ final class Playback {
         recoveryMessage = "";
         setState(videoAvailable ? context.getString(R.string.playback_video_ready) : status, status);
         applyVolume(videoAvailable ? "video_available" : "audio_only");
-        restoreSubtitles();
+        reconcileTracks();
         updatePlaybackActive(videoAvailable || audioOnly);
         listener.onTuneReady(ready, notice);
 
@@ -372,6 +379,7 @@ final class Playback {
             focused = false;
             applyVolume("stop");
             channelId = -1;
+            audioTracks.reset(-1);
             subtitles.reset(-1);
             view.reset();
         }

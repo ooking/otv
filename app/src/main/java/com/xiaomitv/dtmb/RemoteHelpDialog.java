@@ -29,13 +29,13 @@ import java.util.List;
 
 /**
  * 小米电视标配蓝牙语音遥控器可视化按键帮助弹窗。
- * 中央采用矢量渐变拟物重绘小米标配遥控器，两侧对称排布 12 张功能卡片并以平滑曲线箭头精准连线。
+ * 中央采用矢量渐变拟物重绘小米标配遥控器，两侧排布 7 张应用按键功能卡片并以平滑曲线箭头精准连线。
  */
 final class RemoteHelpDialog extends Dialog {
 
     private enum KeyId {
-        POWER, UP, LEFT, HOME, BACK, VOL_DOWN,
-        VOICE, RIGHT, OK, DOWN, MENU, VOL_UP
+        UP, LEFT, BACK,
+        RIGHT, OK, DOWN, MENU
     }
 
     private record KeySpec(
@@ -48,11 +48,7 @@ final class RemoteHelpDialog extends Dialog {
             String slot1Action,
             String slot2Label,
             String slot2Action
-    ) {
-        boolean singleSlot() {
-            return slot2Label.isEmpty();
-        }
-    }
+    ) { }
 
     private final TvStyle style;
     private final RemoteDiagramView diagramView;
@@ -126,7 +122,7 @@ final class RemoteHelpDialog extends Dialog {
             int displayWidth = getContext().getResources().getDisplayMetrics().widthPixels;
             int displayHeight = getContext().getResources().getDisplayMetrics().heightPixels;
             int dialogWidth = Math.min(style.dp(910), (int) (displayWidth * 0.93f));
-            int dialogHeight = Math.min(style.dp(508), (int) (displayHeight * 0.92f));
+            int dialogHeight = Math.min(style.dp(460), (int) (displayHeight * 0.90f));
             window.setLayout(dialogWidth, dialogHeight);
             window.setGravity(Gravity.CENTER);
         }
@@ -160,14 +156,6 @@ final class RemoteHelpDialog extends Dialog {
                 case KeyEvent.KEYCODE_MENU -> {
                     diagramView.setActiveKey(KeyId.MENU);
                     return true;
-                }
-                case KeyEvent.KEYCODE_VOLUME_UP -> {
-                    diagramView.setActiveKey(KeyId.VOL_UP);
-                    return false;
-                }
-                case KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    diagramView.setActiveKey(KeyId.VOL_DOWN);
-                    return false;
                 }
                 case KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
                         KeyEvent.KEYCODE_NUMPAD_ENTER -> {
@@ -212,55 +200,39 @@ final class RemoteHelpDialog extends Dialog {
     private static List<KeySpec> buildSpecs(Context ctx) {
         String full = ctx.getString(R.string.help_slot_fullscreen);
         String panel = ctx.getString(R.string.help_slot_panel);
-        String sys = ctx.getString(R.string.help_slot_system);
 
-        List<KeySpec> list = new ArrayList<>(12);
-        // 左列 6 张（自上而下严格单调不交叉）
-        list.add(new KeySpec(KeyId.POWER, true, 0,
-                ctx.getString(R.string.help_key_power), ctx.getString(R.string.help_badge_system),
-                sys, ctx.getString(R.string.help_power_desc), "", ""));
-        list.add(new KeySpec(KeyId.UP, true, 1,
+        List<KeySpec> list = new ArrayList<>(7);
+        // 左列 3 张（自上而下严格单调不交叉）
+        list.add(new KeySpec(KeyId.UP, true, 0,
                 ctx.getString(R.string.help_key_up), ctx.getString(R.string.help_badge_channel),
                 full, ctx.getString(R.string.help_up_full),
                 panel, ctx.getString(R.string.help_up_panel)));
-        list.add(new KeySpec(KeyId.LEFT, true, 2,
+        list.add(new KeySpec(KeyId.LEFT, true, 1,
                 ctx.getString(R.string.help_key_left), ctx.getString(R.string.help_badge_info),
                 full, ctx.getString(R.string.help_left_full),
                 panel, ctx.getString(R.string.help_left_panel)));
-        list.add(new KeySpec(KeyId.HOME, true, 3,
-                ctx.getString(R.string.help_key_home), ctx.getString(R.string.help_badge_system),
-                sys, ctx.getString(R.string.help_home_desc), "", ""));
-        list.add(new KeySpec(KeyId.BACK, true, 4,
+        list.add(new KeySpec(KeyId.BACK, true, 2,
                 ctx.getString(R.string.help_key_back), ctx.getString(R.string.help_badge_nav),
                 panel, ctx.getString(R.string.help_back_panel),
                 full, ctx.getString(R.string.help_back_full)));
-        list.add(new KeySpec(KeyId.VOL_DOWN, true, 5,
-                ctx.getString(R.string.help_key_vol_down), ctx.getString(R.string.help_badge_volume),
-                sys, ctx.getString(R.string.help_vol_down_desc), "", ""));
 
-        // 右列 6 张（自上而下严格单调不交叉）
-        list.add(new KeySpec(KeyId.VOICE, false, 0,
-                ctx.getString(R.string.help_key_voice), ctx.getString(R.string.help_badge_system),
-                sys, ctx.getString(R.string.help_voice_desc), "", ""));
-        list.add(new KeySpec(KeyId.RIGHT, false, 1,
+        // 右列 4 张（自上而下严格单调不交叉）
+        list.add(new KeySpec(KeyId.RIGHT, false, 0,
                 ctx.getString(R.string.help_key_right), ctx.getString(R.string.help_badge_guide),
                 full, ctx.getString(R.string.help_right_full),
                 panel, ctx.getString(R.string.help_right_panel)));
-        list.add(new KeySpec(KeyId.OK, false, 2,
+        list.add(new KeySpec(KeyId.OK, false, 1,
                 ctx.getString(R.string.help_key_ok), ctx.getString(R.string.help_badge_core),
                 full, ctx.getString(R.string.help_ok_full),
                 panel, ctx.getString(R.string.help_ok_panel)));
-        list.add(new KeySpec(KeyId.DOWN, false, 3,
+        list.add(new KeySpec(KeyId.DOWN, false, 2,
                 ctx.getString(R.string.help_key_down), ctx.getString(R.string.help_badge_channel),
                 full, ctx.getString(R.string.help_down_full),
                 panel, ctx.getString(R.string.help_down_panel)));
-        list.add(new KeySpec(KeyId.MENU, false, 4,
+        list.add(new KeySpec(KeyId.MENU, false, 3,
                 ctx.getString(R.string.help_key_menu), ctx.getString(R.string.help_badge_menu),
                 full, ctx.getString(R.string.help_menu_full),
                 panel, ctx.getString(R.string.help_menu_panel)));
-        list.add(new KeySpec(KeyId.VOL_UP, false, 5,
-                ctx.getString(R.string.help_key_vol_up), ctx.getString(R.string.help_badge_volume),
-                sys, ctx.getString(R.string.help_vol_up_desc), "", ""));
         return list;
     }
 
@@ -270,7 +242,8 @@ final class RemoteHelpDialog extends Dialog {
     private final class RemoteDiagramView extends View {
         private static final int ACCENT_BLUE = 0xff3b82f6;
         private static final int ACCENT_BLUE_BRIGHT = 0xff60a5fa;
-        private static final int POWER_ORANGE = 0xffe86c3a;
+        private static final int SYSTEM_ICON_MUTED = 0x5594a3b8;
+        private static final int POWER_ORANGE_MUTED = 0x66e86c3a;
 
         private final List<KeySpec> specs;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -283,13 +256,14 @@ final class RemoteHelpDialog extends Dialog {
         private final RectF rect = new RectF();
         private final RectF subRect = new RectF();
         private final Path path = new Path();
-        private final RectF[] cardBounds = new RectF[12];
+        private final RectF[] cardBounds;
 
         private KeyId activeKey = KeyId.OK;
 
         RemoteDiagramView(Context context, List<KeySpec> specs) {
             super(context);
             this.specs = specs;
+            this.cardBounds = new RectF[specs.size()];
             for (int i = 0; i < cardBounds.length; i++) {
                 cardBounds[i] = new RectF();
             }
@@ -361,8 +335,12 @@ final class RemoteHelpDialog extends Dialog {
             float rightCardL = remoteRight + corridorW;
             float rightCardR = w - style.dp(2);
 
-            float rowGap = style.dp(6);
-            float cardH = (h - 5f * rowGap) / 6f;
+            float rowGap = style.dp(10);
+            int maxRows = 4;
+            int leftRows = 3;
+            float cardH = Math.min(style.dp(82), (h - (maxRows - 1) * rowGap) / maxRows);
+            float rightStartY = (h - (maxRows * cardH + (maxRows - 1) * rowGap)) / 2f;
+            float leftStartY = (h - (leftRows * cardH + (leftRows - 1) * rowGap)) / 2f;
 
             // 计算遥控器各物理按键几何参数
             float rSmall = remoteW * 0.118f;
@@ -390,10 +368,11 @@ final class RemoteHelpDialog extends Dialog {
                     rSmall, powerY, voiceY, dpadY, rRing, rOk,
                     funcY, rFunc, homeX, menuX, volTop, volBottom, volHalfW, volUpY, volDownY);
 
-            // 2. 绘制左右两侧共 12 张按键说明卡片
+            // 2. 绘制左右两侧共 7 张应用按键说明卡片
             for (int i = 0; i < specs.size(); i++) {
                 KeySpec spec = specs.get(i);
-                float top = spec.row() * (cardH + rowGap);
+                float startY = spec.leftSide() ? leftStartY : rightStartY;
+                float top = startY + spec.row() * (cardH + rowGap);
                 float bottom = top + cardH;
                 float left = spec.leftSide() ? leftCardL : rightCardL;
                 float right = spec.leftSide() ? leftCardR : rightCardR;
@@ -412,13 +391,11 @@ final class RemoteHelpDialog extends Dialog {
                     continue;
                 }
                 drawConnectorForSpec(canvas, spec, cardBounds[i], false,
-                        cx, rSmall, powerY, voiceY, dpadY, rRing, rOk,
-                        funcY, rFunc, homeX, menuX, volHalfW, volUpY, volDownY);
+                        cx, dpadY, rRing, rOk, funcY, rFunc, menuX);
             }
             if (highlighted != null) {
                 drawConnectorForSpec(canvas, highlighted, highlightedBounds, true,
-                        cx, rSmall, powerY, voiceY, dpadY, rRing, rOk,
-                        funcY, rFunc, homeX, menuX, volHalfW, volUpY, volDownY);
+                        cx, dpadY, rRing, rOk, funcY, rFunc, menuX);
             }
         }
 
@@ -456,12 +433,12 @@ final class RemoteHelpDialog extends Dialog {
             strokePaint.setColor(0xff424754);
             canvas.drawRoundRect(rect, bodyCorner, bodyCorner, strokePaint);
 
-            // (1) 顶部电源键（橙红电源图标）
-            drawRoundButton(canvas, cx, powerY, rSmall, activeKey == KeyId.POWER);
+            // (1) 顶部电源键（系统按键，弱化显示仅作外形参照）
+            drawRoundButton(canvas, cx, powerY, rSmall, false);
             drawPowerIcon(canvas, cx, powerY, rSmall * 0.50f);
 
-            // (2) 语音键（麦克风图标）
-            drawRoundButton(canvas, cx, voiceY, rSmall, activeKey == KeyId.VOICE);
+            // (2) 语音键（系统按键，弱化显示仅作外形参照）
+            drawRoundButton(canvas, cx, voiceY, rSmall, false);
             drawMicIcon(canvas, cx, voiceY, rSmall * 0.52f);
 
             // (3) 四向导航大圆环与中心内凹确定键
@@ -498,8 +475,8 @@ final class RemoteHelpDialog extends Dialog {
             strokePaint.setColor(activeKey == KeyId.OK ? ACCENT_BLUE_BRIGHT : 0x24ffffff);
             canvas.drawCircle(cx, dpadY, rOk, strokePaint);
 
-            // (4) 主页键 / 返回键 / 菜单键（严格按图 2 左=主页、中=返回、右=菜单排布）
-            drawRoundButton(canvas, homeX, funcY, rFunc, activeKey == KeyId.HOME);
+            // (4) 主页键 / 返回键 / 菜单键（左=主页[系统]、中=返回、右=菜单）
+            drawRoundButton(canvas, homeX, funcY, rFunc, false);
             drawHomeIcon(canvas, homeX, funcY, rFunc * 0.48f);
 
             drawRoundButton(canvas, cx, funcY, rFunc, activeKey == KeyId.BACK);
@@ -508,7 +485,7 @@ final class RemoteHelpDialog extends Dialog {
             drawRoundButton(canvas, menuX, funcY, rFunc, activeKey == KeyId.MENU);
             drawMenuIcon(canvas, menuX, funcY, rFunc * 0.45f);
 
-            // (5) 音量加减竖向一体胶囊键
+            // (5) 音量加减竖向一体胶囊键（系统按键，弱化显示仅作外形参照）
             rect.set(cx - volHalfW - style.dp(1f), volTop - style.dp(1f),
                     cx + volHalfW + style.dp(1f), volBottom + style.dp(1f));
             paint.setColor(0xff0e1014);
@@ -520,24 +497,13 @@ final class RemoteHelpDialog extends Dialog {
             canvas.drawRoundRect(rect, volHalfW, volHalfW, paint);
             paint.setShader(null);
 
-            // 音量键上半或下半激活光晕
-            if (activeKey == KeyId.VOL_UP || activeKey == KeyId.VOL_DOWN) {
-                float midY = (volTop + volBottom) / 2f;
-                subRect.set(cx - volHalfW, activeKey == KeyId.VOL_UP ? volTop : midY,
-                        cx + volHalfW, activeKey == KeyId.VOL_UP ? midY : volBottom);
-                paint.setColor(0x383b82f6);
-                canvas.drawRoundRect(subRect, volHalfW, volHalfW, paint);
-            }
-
-            strokePaint.setStrokeWidth(style.dp(
-                    (activeKey == KeyId.VOL_UP || activeKey == KeyId.VOL_DOWN) ? 1.6f : 0.9f));
-            strokePaint.setColor((activeKey == KeyId.VOL_UP || activeKey == KeyId.VOL_DOWN)
-                    ? ACCENT_BLUE_BRIGHT : 0x2affffff);
+            strokePaint.setStrokeWidth(style.dp(0.9f));
+            strokePaint.setColor(0x2affffff);
             canvas.drawRoundRect(rect, volHalfW, volHalfW, strokePaint);
 
             // 音量 + 与 - 符号
             iconPaint.setStrokeWidth(style.dp(1.5f));
-            iconPaint.setColor(0xffe6e9f0);
+            iconPaint.setColor(SYSTEM_ICON_MUTED);
             float plusR = volHalfW * 0.36f;
             canvas.drawLine(cx - plusR, volUpY, cx + plusR, volUpY, iconPaint);
             canvas.drawLine(cx, volUpY - plusR, cx, volUpY + plusR, iconPaint);
@@ -580,7 +546,7 @@ final class RemoteHelpDialog extends Dialog {
 
         private void drawPowerIcon(Canvas canvas, float cx, float cy, float r) {
             iconPaint.setStrokeWidth(style.dp(1.45f));
-            iconPaint.setColor(POWER_ORANGE);
+            iconPaint.setColor(POWER_ORANGE_MUTED);
             rect.set(cx - r, cy - r, cx + r, cy + r);
             canvas.drawArc(rect, -58f, 296f, false, iconPaint);
             canvas.drawLine(cx, cy - r * 1.12f, cx, cy - r * 0.12f, iconPaint);
@@ -588,7 +554,7 @@ final class RemoteHelpDialog extends Dialog {
 
         private void drawMicIcon(Canvas canvas, float cx, float cy, float r) {
             iconPaint.setStrokeWidth(style.dp(1.35f));
-            iconPaint.setColor(0xffe6e9f0);
+            iconPaint.setColor(SYSTEM_ICON_MUTED);
             float capW = r * 0.42f;
             rect.set(cx - capW, cy - r * 0.92f, cx + capW, cy + r * 0.16f);
             canvas.drawRoundRect(rect, capW, capW, iconPaint);
@@ -599,7 +565,7 @@ final class RemoteHelpDialog extends Dialog {
 
         private void drawHomeIcon(Canvas canvas, float cx, float cy, float r) {
             iconPaint.setStrokeWidth(style.dp(1.4f));
-            iconPaint.setColor(0xffe6e9f0);
+            iconPaint.setColor(SYSTEM_ICON_MUTED);
             path.reset();
             path.moveTo(cx, cy - r * 0.92f);
             path.lineTo(cx + r * 0.88f, cy - r * 0.12f);
@@ -675,24 +641,19 @@ final class RemoteHelpDialog extends Dialog {
             float titleBaseline = headerCenterY - (titleFm.ascent + titleFm.descent) / 2f;
             canvas.drawText(clippedTitle, titleLeft, titleBaseline, titlePaint);
 
-            // 下半部动作子槽位（参考图 1 分栏灰底圆角槽位）
-            float slotTop = bounds.top + style.dp(26);
-            float slotBottom = bounds.bottom - style.dp(6);
+            // 下半部动作子槽位（分栏灰底圆角槽位）
+            float slotTop = bounds.top + style.dp(28);
+            float slotBottom = bounds.bottom - style.dp(7);
             if (slotBottom <= slotTop + style.dp(12)) return;
 
-            if (spec.singleSlot()) {
-                subRect.set(bounds.left + padX, slotTop, bounds.right - padX, slotBottom);
-                drawActionSlot(canvas, subRect, spec.slot1Label(), spec.slot1Action(), active, false);
-            } else {
-                float gap = style.dp(6);
-                float totalW = bounds.width() - padX * 2f;
-                float eachW = (totalW - gap) / 2f;
-                subRect.set(bounds.left + padX, slotTop, bounds.left + padX + eachW, slotBottom);
-                drawActionSlot(canvas, subRect, spec.slot1Label(), spec.slot1Action(), active, true);
+            float gap = style.dp(6);
+            float totalW = bounds.width() - padX * 2f;
+            float eachW = (totalW - gap) / 2f;
+            subRect.set(bounds.left + padX, slotTop, bounds.left + padX + eachW, slotBottom);
+            drawActionSlot(canvas, subRect, spec.slot1Label(), spec.slot1Action(), active, true);
 
-                subRect.set(bounds.left + padX + eachW + gap, slotTop, bounds.right - padX, slotBottom);
-                drawActionSlot(canvas, subRect, spec.slot2Label(), spec.slot2Action(), active, false);
-            }
+            subRect.set(bounds.left + padX + eachW + gap, slotTop, bounds.right - padX, slotBottom);
+            drawActionSlot(canvas, subRect, spec.slot2Label(), spec.slot2Action(), active, false);
         }
 
         private void drawActionSlot(Canvas canvas, RectF slotRect, String label, String value,
@@ -728,13 +689,10 @@ final class RemoteHelpDialog extends Dialog {
 
         private void drawCardKeyMiniIcon(Canvas canvas, KeyId id, float cx, float cy,
                                          float r, boolean active) {
-            int color = id == KeyId.POWER ? POWER_ORANGE : (active ? ACCENT_BLUE_BRIGHT : 0xffcbd5e1);
+            int color = active ? ACCENT_BLUE_BRIGHT : 0xffcbd5e1;
             iconPaint.setColor(color);
             iconPaint.setStrokeWidth(style.dp(1.4f));
             switch (id) {
-                case POWER -> drawPowerIcon(canvas, cx, cy, r * 0.92f);
-                case VOICE -> drawMicIcon(canvas, cx, cy, r * 0.95f);
-                case HOME -> drawHomeIcon(canvas, cx, cy, r * 0.92f);
                 case MENU -> drawMenuIcon(canvas, cx, cy, r * 0.85f);
                 case BACK -> drawBackIcon(canvas, cx, cy, r * 0.85f);
                 case OK -> {
@@ -770,26 +728,15 @@ final class RemoteHelpDialog extends Dialog {
                     path.lineTo(cx - r * 0.35f, cy + r * 0.8f);
                     canvas.drawPath(path, iconPaint);
                 }
-                case VOL_UP -> {
-                    canvas.drawLine(cx - r * 0.8f, cy, cx + r * 0.8f, cy, iconPaint);
-                    canvas.drawLine(cx, cy - r * 0.8f, cx, cy + r * 0.8f, iconPaint);
-                }
-                case VOL_DOWN -> canvas.drawLine(cx - r * 0.8f, cy, cx + r * 0.8f, cy, iconPaint);
             }
         }
 
         private void drawConnectorForSpec(Canvas canvas, KeySpec spec, RectF card, boolean active,
-                                          float cx, float rSmall, float powerY, float voiceY,
-                                          float dpadY, float rRing, float rOk,
-                                          float funcY, float rFunc, float homeX, float menuX,
-                                          float volHalfW, float volUpY, float volDownY) {
+                                          float cx, float dpadY, float rRing, float rOk,
+                                          float funcY, float rFunc, float menuX) {
             float sx;
             float sy;
             switch (spec.id()) {
-                case POWER -> {
-                    sx = cx - rSmall;
-                    sy = powerY;
-                }
                 case UP -> {
                     sx = cx - rRing * 0.36f;
                     sy = dpadY - rRing * 0.78f;
@@ -798,21 +745,9 @@ final class RemoteHelpDialog extends Dialog {
                     sx = cx - rRing * 0.85f;
                     sy = dpadY;
                 }
-                case HOME -> {
-                    sx = homeX - rFunc * 0.85f;
-                    sy = funcY;
-                }
                 case BACK -> {
                     sx = cx - rFunc * 0.35f;
                     sy = funcY + rFunc * 0.88f;
-                }
-                case VOL_DOWN -> {
-                    sx = cx - volHalfW;
-                    sy = volDownY;
-                }
-                case VOICE -> {
-                    sx = cx + rSmall;
-                    sy = voiceY;
                 }
                 case RIGHT -> {
                     sx = cx + rRing * 0.85f;
@@ -831,8 +766,7 @@ final class RemoteHelpDialog extends Dialog {
                     sy = funcY;
                 }
                 default -> {
-                    sx = cx + volHalfW;
-                    sy = volUpY;
+                    return;
                 }
             }
 

@@ -19,7 +19,6 @@
     <!-- 選項面板 -->
     <string name="options_title">設定與選項</string>
     <string name="options_subtitle">按 OK 鍵進入設定 · 返回鍵關閉</string>
-    <string name="options_footer">OTV %1$s (%2$s) · DTMB 播放核心</string>
     <string name="option_audio_tracks">聲道與音軌</string>
     <string name="option_subtitles">字幕</string>
     <string name="option_picture_settings">圖像設定</string>
@@ -200,15 +199,8 @@
     <string name="help_badge_core">核心操作</string>
     <string name="help_badge_menu">影音與設定</string>
     <string name="help_badge_nav">返回與退出</string>
-    <string name="help_badge_system">系統按鍵</string>
-    <string name="help_badge_volume">音量控制</string>
     <string name="help_slot_fullscreen">全螢幕播放時</string>
     <string name="help_slot_panel">面板開啟時</string>
-    <string name="help_slot_system">電視系統動作</string>
-    <string name="help_key_power">電源鍵</string>
-    <string name="help_power_desc">待機休眠或喚醒小米電視</string>
-    <string name="help_key_voice">語音鍵</string>
-    <string name="help_voice_desc">按住說話，呼出小愛同學語音助理</string>
     <string name="help_key_up">上鍵</string>
     <string name="help_up_full">向上切換頻道</string>
     <string name="help_up_panel">向上移動焦點</string>
@@ -224,16 +216,10 @@
     <string name="help_key_ok">確定鍵 (OK)</string>
     <string name="help_ok_full">開啟底部頻道預覽列</string>
     <string name="help_ok_panel">確認轉台 / 進入選項</string>
-    <string name="help_key_home">主頁鍵</string>
-    <string name="help_home_desc">退回電視系統桌面並暫停直播</string>
     <string name="help_key_back">返回鍵</string>
     <string name="help_back_panel">關閉目前浮層面板</string>
     <string name="help_back_full">退出 OTV 應用程式</string>
     <string name="help_key_menu">選單鍵</string>
     <string name="help_menu_full">音軌 / 字幕 / 畫質設定</string>
     <string name="help_menu_panel">開啟右側設定抽屜</string>
-    <string name="help_key_vol_up">音量 +</string>
-    <string name="help_vol_up_desc">調高電視媒體播放音量</string>
-    <string name="help_key_vol_down">音量 -</string>
-    <string name="help_vol_down_desc">調低電視媒體播放音量</string>
 </resources>

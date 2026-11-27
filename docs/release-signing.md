@@ -91,6 +91,7 @@ GitHub Secrets 仅支持存储纯文本，需要将二进制 `.keystore` 文件�
 2. 在左侧选择 **发布 APK 到 Releases** 工作流。
 3. 点击右侧 **Run workflow**：
    - **发布版本标签**：可留空（默认自动读取 [`app/build.gradle`](../app/build.gradle) 中的 `versionName` 并加上 `v` 前缀，如 `v1.0.0`），也可手动指定如 `v1.0.1`。
+   - **可选补充说明 (`changelog`)**：留空时会自动提取距离上一版本标签的所有 Git 提交记录并按「新增功能 / 体验优化 / 问题修复 / 其他更新」分类生成中文更新日志；若填写说明文字，则会作为「版本说明」置顶显示在自动生成的日志上方。
    - **是否标记为预发布版本**：按需勾选。
 4. 工作流检测到上述 Secret 已配置后，会自动执行 `./gradlew assembleRelease`，完成 `zipalign` 字节对齐与 `apksigner` 正式签名，并将 `OTV-vX.Y.Z.apk` 上传至 GitHub Releases。
 

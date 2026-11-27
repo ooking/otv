@@ -21,7 +21,7 @@
     <!-- Options Panel -->
     <string name="options_title">Settings &amp; Options</string>
     <string name="options_subtitle">Press OK to select · Back to close</string>
-    <string name="options_footer">OTV %1$s (%2$s) · DTMB Playback Engine</string>
+    <string name="options_footer" translatable="false">OTV  %1$s</string>
     <string name="option_audio_tracks">Audio &amp; Tracks</string>
     <string name="option_subtitles">Subtitles</string>
     <string name="option_picture_settings">Picture Settings</string>
@@ -202,15 +202,8 @@
     <string name="help_badge_core">Primary</string>
     <string name="help_badge_menu">Settings</string>
     <string name="help_badge_nav">Back / Exit</string>
-    <string name="help_badge_system">System</string>
-    <string name="help_badge_volume">Volume</string>
     <string name="help_slot_fullscreen">Fullscreen</string>
     <string name="help_slot_panel">In Panels</string>
-    <string name="help_slot_system">TV System</string>
-    <string name="help_key_power">Power</string>
-    <string name="help_power_desc">Put Xiaomi TV to sleep or wake it up</string>
-    <string name="help_key_voice">Voice</string>
-    <string name="help_voice_desc">Hold to speak to XiaoAi voice assistant</string>
     <string name="help_key_up">Up</string>
     <string name="help_up_full">Switch channel up</string>
     <string name="help_up_panel">Move focus up</string>
@@ -226,16 +219,10 @@
     <string name="help_key_ok">OK / Select</string>
     <string name="help_ok_full">Open Channel Bar</string>
     <string name="help_ok_panel">Select / Confirm</string>
-    <string name="help_key_home">Home</string>
-    <string name="help_home_desc">Return to TV Home screen</string>
     <string name="help_key_back">Back</string>
     <string name="help_back_panel">Close open panel</string>
     <string name="help_back_full">Exit OTV</string>
     <string name="help_key_menu">Menu</string>
     <string name="help_menu_full">Audio / Subs / Picture</string>
     <string name="help_menu_panel">Open Settings drawer</string>
-    <string name="help_key_vol_up">Volume +</string>
-    <string name="help_vol_up_desc">Increase TV media volume</string>
-    <string name="help_key_vol_down">Volume -</string>
-    <string name="help_vol_down_desc">Decrease TV media volume</string>
 </resources>

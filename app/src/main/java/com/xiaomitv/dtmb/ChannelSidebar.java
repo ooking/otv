@@ -84,17 +84,22 @@ final class ChannelSidebar {
         addCapsule(controlsRow, optionsBtn);
         addCapsule(controlsRow, helpBtn);
 
-        // 右侧展示当前版本号与 Release / Debug 类型徽标
+        // 右侧单行展示当前版本号、构建类型与编译日期（等宽数字对齐，强制单行不断行）
         View spacer = new View(context);
         spacer.setFocusable(false);
+        spacer.setMinimumWidth(style.dp(14));
         spacer.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         controlsRow.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
 
         boolean debugBuild = AppVersion.isDebug(context);
-        TextView versionBadge = style.text(12, debugBuild ? 0xfffbbf24 : 0xff94a3b8, true);
+        TextView versionBadge = style.text(12, debugBuild ? 0xfffbbf24 : 0xff9aa0b2, true);
+        versionBadge.setTextSize(11.5f);
+        versionBadge.setFontFeatureSettings("tnum");
+        versionBadge.setSingleLine(true);
+        style.trim(versionBadge, 1);
         versionBadge.setText(AppVersion.badgeText(context));
         versionBadge.setFocusable(false);
-        versionBadge.setPadding(style.dp(10), style.dp(4), style.dp(10), style.dp(4));
+        versionBadge.setPadding(style.dp(11), style.dp(4), style.dp(11), style.dp(4));
         versionBadge.setBackground(style.surface(
                 debugBuild ? 0x33f59e0b : 0x66222530,
                 12,

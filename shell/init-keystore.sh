@@ -31,9 +31,10 @@ if [[ -f "$KS_PATH" ]]; then
         echo "错误: 密码不能为空。" >&2
         exit 1
     fi
-    # 校验密码与别名是否正确
-    if ! keytool -list -keystore "$KS_PATH" -alias "$KEY_ALIAS" -storepass "$KS_PASS" >/dev/null 2>&1; then
-        echo "错误: 无法验证证书密码或别名 '${KEY_ALIAS}'，请核对后重试。" >&2
+    # 校验证书库密码、别名以及内层私钥密码是否一致可用
+    if ! keytool -keypasswd -keystore "$KS_PATH" -alias "$KEY_ALIAS" \
+        -storepass "$KS_PASS" -keypass "$KS_PASS" -new "$KS_PASS" >/dev/null 2>&1; then
+        echo "错误: 无法使用该密码解锁证书或私钥 '${KEY_ALIAS}'，请核对密码与别名后重试。" >&2
         exit 1
     fi
 else

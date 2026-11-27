@@ -6,7 +6,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
 /**
- * 读取当前安装包版本号与构建类型（Release / Debug），零外部编译期依赖。
+ * 读取当前安装包版本号、构建类型（Release / Debug）与编译时间。
  */
 final class AppVersion {
     private AppVersion() {}
@@ -22,7 +22,7 @@ final class AppVersion {
                 return "v" + info.versionName;
             }
         } catch (PackageManager.NameNotFoundException ignored) {
-            // 理论上当前自身包名始终可读，回退到默认标识
+            // 当前自身包名始终可读，异常时回退默认标识
         }
         return "v1.0.0";
     }
@@ -31,7 +31,11 @@ final class AppVersion {
         return isDebug(context) ? "Debug" : "Release";
     }
 
+    static String buildDate(Context context) {
+        return context.getString(R.string.build_date);
+    }
+
     static String badgeText(Context context) {
-        return versionTag(context) + " · " + buildType(context);
+        return versionTag(context) + " · " + buildType(context) + " · " + buildDate(context);
     }
 }

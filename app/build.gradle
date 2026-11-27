@@ -2,6 +2,15 @@ plugins {
     id 'com.android.application' version '8.6.1'
 }
 
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+// 按北京时间生成编译时间戳：Release 精确到日期，Debug 精确到分钟方便同日调试区分
+def buildNow = ZonedDateTime.now(ZoneId.of('Asia/Shanghai'))
+def releaseBuildDate = buildNow.format(DateTimeFormatter.ofPattern('yyyy-MM-dd'))
+def debugBuildTime = buildNow.format(DateTimeFormatter.ofPattern('yyyy-MM-dd HH:mm'))
+
 // 读取本地私密签名配置（keystore.properties 不提交到 Git；不存在时保持未签名以兼容 GitHub Actions）
 def keystorePropsFile = rootProject.file('keystore.properties')
 def keystoreProps = new Properties()
@@ -31,8 +40,15 @@ android {
         applicationId 'com.xiaomitv.dtmb'
         minSdk 26
         targetSdk 34
-        versionCode 4
-        versionName '1.0.0'
+        versionCode 5
+        versionName '1.0.5'
+        // 支持通过 -PappVersionName=x.y.z 动态覆盖编译进 APK 的版本号（如 GitHub Actions 手动填写标签时）
+        if (project.hasProperty('appVersionName')) {
+            def customVer = project.property('appVersionName').toString().trim().replaceFirst(/^[vV]/, '')
+            if (customVer) {
+                versionName customVer
+            }
+        }
         manifestPlaceholders = [appLabel: '@string/app_name']
     }
 
@@ -53,8 +69,10 @@ android {
             // 独立调试包名，可与正式版在电视上共存且数据互不干扰
             applicationIdSuffix '.debug'
             manifestPlaceholders = [appLabel: 'OTV Debug']
+            resValue 'string', 'build_date', debugBuildTime
         }
         release {
+            resValue 'string', 'build_date', releaseBuildDate
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             }
