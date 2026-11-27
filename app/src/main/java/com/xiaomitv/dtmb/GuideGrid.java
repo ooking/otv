@@ -79,7 +79,7 @@ final class GuideGrid extends LinearLayout {
         this.actions = actions;
         this.noProgramText = context.getString(R.string.sidebar_no_program);
         this.rulerTimeText = context.getString(R.string.guide_ruler_time);
-        this.cellLiveTagText = context.getString(R.string.guide_cell_live_tag);
+        this.cellLiveTagText = context.getString(R.string.guide_live_tag);
         Locale locale = AppLanguage.activeLocale(context);
         this.clockFormat = new SimpleDateFormat(context.getString(R.string.guide_clock_format), locale);
         this.hourFormat = new SimpleDateFormat(context.getString(R.string.guide_hour_format), locale);
@@ -115,10 +115,9 @@ final class GuideGrid extends LinearLayout {
         heroMeta.setLines(1);
         metaRow.addView(heroMeta, new LinearLayout.LayoutParams(-2, -2, 1f));
 
-        heroLiveTag = style.text(12, Color.WHITE, true);
+        heroLiveTag = style.text(11, TvStyle.LIVE_TEXT, true);
         heroLiveTag.setText(R.string.guide_live_tag);
-        heroLiveTag.setPadding(style.dp(8), style.dp(2), style.dp(8), style.dp(2));
-        heroLiveTag.setBackground(style.surface(TvStyle.RED_LIVE, 6, Color.TRANSPARENT));
+        style.styleLiveBadge(heroLiveTag, false);
         LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams(-2, -2);
         tagParams.leftMargin = style.dp(10);
         metaRow.addView(heroLiveTag, tagParams);
@@ -562,8 +561,8 @@ final class GuideGrid extends LinearLayout {
             float contentTop = visibleTop + verticalPadding;
             float contentBottom = visibleBottom - verticalPadding;
             int titleWidth = (int) (rect.right - style.dp(6) - contentLeft);
-            boolean showLiveBadge = visibleHeight >= style.dp(44) && now >= slot.start() && now < slot.end();
-            int badgeSpace = showLiveBadge ? style.dp(16) : 0;
+            boolean showLiveBadge = visibleHeight >= style.dp(46) && now >= slot.start() && now < slot.end();
+            int badgeSpace = showLiveBadge ? style.dp(20) : 0;
             int maxLines = (int) ((contentBottom - contentTop - badgeSpace) / titleLineHeight);
             if (titleWidth <= 0 || maxLines < 1) return;
 
@@ -576,12 +575,54 @@ final class GuideGrid extends LinearLayout {
             canvas.translate(contentLeft, contentTop);
             layout.draw(canvas);
             if (showLiveBadge) {
-                textPaint.setTextAlign(Paint.Align.LEFT);
-                textPaint.setTextSize(style.dp(10));
-                textPaint.setColor(isFocused ? 0xffc62828 : TvStyle.RED_LIVE);
-                canvas.drawText(cellLiveTagText, 0, layout.getHeight() + style.dp(2) - textPaint.ascent(), textPaint);
+                drawLivePill(canvas, 0, layout.getHeight() + style.dp(4), isFocused);
             }
             canvas.restoreToCount(saved);
+        }
+
+        private void drawLivePill(Canvas canvas, float x, float y, boolean onLight) {
+            textPaint.setTextAlign(Paint.Align.LEFT);
+            textPaint.setTextSize(style.dp(9.5f));
+            float textW = textPaint.measureText(cellLiveTagText);
+            float padH = style.dp(5.5f);
+            float iconW = style.dp(7.5f);
+            float iconGap = style.dp(3.5f);
+            float pillH = style.dp(15.5f);
+            float pillW = padH * 2f + iconW + iconGap + textW;
+            float radius = pillH / 2f;
+
+            // 胶囊底色
+            rect.set(x, y, x + pillW, y + pillH);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(onLight ? TvStyle.LIVE_BG_ON_LIGHT : TvStyle.LIVE_BG);
+            canvas.drawRoundRect(rect, radius, radius, paint);
+
+            // 柔和细描边
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(style.dp(0.8f));
+            paint.setColor(onLight ? TvStyle.LIVE_BORDER_ON_LIGHT : TvStyle.LIVE_BORDER);
+            canvas.drawRoundRect(rect, radius, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
+
+            // 左侧三根错落声波竖条图标
+            int fg = onLight ? TvStyle.LIVE_TEXT_ON_LIGHT : TvStyle.LIVE_TEXT;
+            paint.setColor(fg);
+            float barW = style.dp(1.6f);
+            float barGap = style.dp(1.3f);
+            float barBottom = y + pillH - style.dp(3.8f);
+            float barLeft = x + padH;
+            float[] barHeights = {style.dp(4.8f), style.dp(7.8f), style.dp(3.6f)};
+            for (int i = 0; i < 3; i++) {
+                float bx = barLeft + i * (barW + barGap);
+                rect.set(bx, barBottom - barHeights[i], bx + barW, barBottom);
+                canvas.drawRoundRect(rect, barW / 2f, barW / 2f, paint);
+            }
+
+            // 右侧状态文本
+            textPaint.setColor(fg);
+            Paint.FontMetrics fm = textPaint.getFontMetrics();
+            float baseline = y + pillH / 2f - (fm.ascent + fm.descent) / 2f;
+            canvas.drawText(cellLiveTagText, barLeft + iconW + iconGap, baseline, textPaint);
         }
 
         private StaticLayout programTitleLayout(String title, int width, int maxLines) {

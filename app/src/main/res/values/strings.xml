@@ -47,7 +47,7 @@
     <string name="sidebar_help">Remote Help</string>
     <string name="sidebar_filter_favorites">Channels: Favorites</string>
     <string name="sidebar_filter_all">Channels: All</string>
-    <string name="badge_playing">● Playing</string>
+    <string name="badge_playing">Playing</string>
     <string name="sidebar_current_slot">Current</string>
     <string name="sidebar_on_air">On Air</string>
     <string name="sidebar_no_program">No program info</string>
@@ -100,7 +100,6 @@
     <string name="overlay_tuning">Tuning channel…</string>
     <string name="overlay_more_info">Press [Left] for full details</string>
     <string name="guide_live_tag">LIVE</string>
-    <string name="guide_cell_live_tag">[LIVE]</string>
     <string name="guide_group_favorites">Favorites</string>
     <string name="guide_group_all">All Channels</string>
     <string name="guide_duration_minutes">(%1$d min)</string>
@@ -116,6 +115,7 @@
     <string name="audio_summary_unreported">Current track not reported</string>
     <string name="audio_dialog_empty">No audio tracks reported for this program yet. Try again once video is ready.</string>
     <string name="audio_toast_changed">Audio tracks changed. Please reopen the menu.</string>
+    <string name="audio_dialog_hint">Some channels do not broadcast audio language names; alternate tracks may match the main audio on single-language programs.</string>
     <string name="subtitle_summary_none">No subtitles available</string>
     <string name="subtitle_off">Subtitles Off</string>
     <string name="subtitle_dialog_title">Broadcast Subtitles</string>
@@ -127,6 +127,13 @@
     <string name="caption_style_unavailable">This TV does not provide Android caption style settings.</string>
     <string name="track_audio_label">Audio %1$d</string>
     <string name="track_channels">%1$d ch</string>
+    <string name="track_format_mono">Mono</string>
+    <string name="track_format_dual_mono">Dual Mono</string>
+    <string name="track_format_stereo">Stereo</string>
+    <string name="track_format_surround">5.1 Surround</string>
+    <string name="track_role_ad">Audio Description</string>
+    <string name="track_role_hi">Hearing Impaired</string>
+    <string name="track_role_commentary">Commentary</string>
     <string name="track_subtitle_label">Subtitle %1$d</string>
     <string name="lang_chinese">Chinese</string>
     <string name="lang_zh_hans">Simplified Chinese</string>
@@ -134,6 +141,10 @@
     <string name="lang_english">English</string>
     <string name="lang_cantonese">Cantonese</string>
     <string name="lang_mandarin">Mandarin</string>
+    <string name="lang_japanese">Japanese</string>
+    <string name="lang_korean">Korean</string>
+    <string name="lang_original">Original</string>
+    <string name="lang_multiple">Multi-language</string>
 
     <!-- XMLTV Import -->
     <string name="xmltv_toast_importing">Importing program guide…</string>

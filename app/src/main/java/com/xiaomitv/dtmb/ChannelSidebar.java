@@ -272,11 +272,14 @@ final class ChannelSidebar {
             nameLp.leftMargin = style.dp(8);
             topRow.addView(nameView, nameLp);
 
-            // 播放中小标
-            TextView liveBadge = style.text(11, TvStyle.RED_LIVE, true);
+            // 播放中胶囊徽章
+            TextView liveBadge = style.text(10, TvStyle.LIVE_TEXT, true);
             liveBadge.setText(R.string.badge_playing);
+            style.styleLiveBadge(liveBadge, false);
             liveBadge.setVisibility(isCurrentPlaying ? View.VISIBLE : View.GONE);
-            topRow.addView(liveBadge);
+            LinearLayout.LayoutParams liveLp = new LinearLayout.LayoutParams(-2, -2);
+            liveLp.leftMargin = style.dp(6);
+            topRow.addView(liveBadge, liveLp);
 
             card.addView(topRow);
 
@@ -349,6 +352,7 @@ final class ChannelSidebar {
                     progressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x22000000));
                     timeView.setTextColor(0xff6b7280);
                     progView.setTextColor(0xff121316); // 纯黑粗体节目名！
+                    if (isCurrentPlaying) style.styleLiveBadge(liveBadge, true);
                 } else {
                     // 未聚焦态：深灰半透，白色及浅灰文字
                     card.setBackground(style.surface(0xdf222530, 12, 0x33ffffff));
@@ -359,6 +363,7 @@ final class ChannelSidebar {
                     progressBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x26ffffff));
                     timeView.setTextColor(0xff9094a6);
                     progView.setTextColor(0xffdcdfe8);
+                    if (isCurrentPlaying) style.styleLiveBadge(liveBadge, false);
                 }
             };
 

@@ -44,7 +44,7 @@
     <string name="sidebar_help">按键帮助</string>
     <string name="sidebar_filter_favorites">频道: 收藏</string>
     <string name="sidebar_filter_all">频道: 全部</string>
-    <string name="badge_playing">● 播放中</string>
+    <string name="badge_playing">播放中</string>
     <string name="sidebar_current_slot">当前时段</string>
     <string name="sidebar_on_air">正在播出</string>
     <string name="sidebar_no_program">暂无节目资料</string>
@@ -97,7 +97,6 @@
     <string name="overlay_tuning">正在调谐频道…</string>
     <string name="overlay_more_info">按 [左键] 查看完整详情</string>
     <string name="guide_live_tag">直播中</string>
-    <string name="guide_cell_live_tag">[直播中]</string>
     <string name="guide_group_favorites">收藏频道</string>
     <string name="guide_group_all">全部频道</string>
     <string name="guide_duration_minutes">(%1$d分钟)</string>
@@ -113,6 +112,7 @@
     <string name="audio_summary_unreported">未报告当前音轨</string>
     <string name="audio_dialog_empty">当前节目尚未报告可用音轨。画面就绪后可再打开菜单。</string>
     <string name="audio_toast_changed">音轨已变化，请重新打开菜单。</string>
+    <string name="audio_dialog_hint">部分电视台未广播语言名称；单语节目时，备用音轨可能与主音轨相同。</string>
     <string name="subtitle_summary_none">暂无可选字幕</string>
     <string name="subtitle_off">关闭字幕</string>
     <string name="subtitle_dialog_title">广播字幕</string>
@@ -124,6 +124,13 @@
     <string name="caption_style_unavailable">此电视未提供 Android 字幕样式设置入口。</string>
     <string name="track_audio_label">音轨 %1$d</string>
     <string name="track_channels">%1$d 声道</string>
+    <string name="track_format_mono">单声道</string>
+    <string name="track_format_dual_mono">双声道</string>
+    <string name="track_format_stereo">立体声</string>
+    <string name="track_format_surround">5.1 环绕</string>
+    <string name="track_role_ad">口述影像</string>
+    <string name="track_role_hi">听障辅助</string>
+    <string name="track_role_commentary">旁白</string>
     <string name="track_subtitle_label">字幕 %1$d</string>
     <string name="lang_chinese">中文</string>
     <string name="lang_zh_hans">简体中文</string>
@@ -131,6 +138,10 @@
     <string name="lang_english">英语</string>
     <string name="lang_cantonese">粤语</string>
     <string name="lang_mandarin">普通话</string>
+    <string name="lang_japanese">日语</string>
+    <string name="lang_korean">韩语</string>
+    <string name="lang_original">原声</string>
+    <string name="lang_multiple">多语</string>
 
     <!-- XMLTV 导入 -->
     <string name="xmltv_toast_importing">正在导入节目表…</string>

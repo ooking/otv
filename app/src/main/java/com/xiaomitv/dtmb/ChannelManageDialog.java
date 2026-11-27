@@ -382,10 +382,9 @@ final class ChannelManageDialog extends Dialog {
                 badgeContainer.setOrientation(LinearLayout.HORIZONTAL);
                 badgeContainer.setGravity(Gravity.CENTER_VERTICAL);
 
-                TextView playingBadge = style.text(11, 0xffffffff, true);
+                TextView playingBadge = style.text(11, TvStyle.LIVE_TEXT, true);
                 playingBadge.setText(R.string.badge_playing);
-                playingBadge.setBackground(style.surface(TvStyle.RED_LIVE, 4, Color.TRANSPARENT));
-                playingBadge.setPadding(style.dp(6), style.dp(1), style.dp(6), style.dp(1));
+                style.styleSelectableLiveBadge(playingBadge);
                 badgeContainer.addView(playingBadge);
 
                 TextView favBadge = style.text(11, 0xff101115, true);

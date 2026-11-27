@@ -380,11 +380,11 @@ final class TrackPreferences {
         if (tracks == null || tracks.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         for (AudioTrack track : tracks) {
+            // 不包含受解码器状态影响动态回填的 channelCount，避免切轨后误判为新快照
             sb.append(escape(track.id())).append(',')
                     .append(escape(track.language())).append(',')
                     .append(escape(track.pid())).append(',')
-                    .append(escape(track.role())).append(',')
-                    .append(track.channelCount()).append(';');
+                    .append(escape(track.role())).append(';');
         }
         return sb.toString();
     }

@@ -152,6 +152,15 @@ public final class TrackPreferencesTest {
         AudioTrack matched = TrackPreferences.matchAudio(pref, Arrays.asList(n0, n1));
         assertNotNull(matched, "无语言标签多轨应按顺序兜底");
         assertEquals("6", matched.id(), "应命中第 2 条无语言轨");
+
+        // 解码器延迟回填 channelCount 时，快照签名应保持稳定
+        AudioTrack beforeDecode = new AudioTrack("222", "", "", "832", "0:0:0", 0);
+        AudioTrack afterDecode = new AudioTrack("222", "", "", "832", "0:0:0", 4);
+        assertEquals(
+                TrackPreferences.audioSnapshotSignature(Collections.singletonList(beforeDecode)),
+                TrackPreferences.audioSnapshotSignature(Collections.singletonList(afterDecode)),
+                "解码器回填声道数不应改变轨道快照签名"
+        );
     }
 
     private static void testSubtitleSameLanguageMultiTracks() {

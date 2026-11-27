@@ -27,6 +27,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.net.URI;
@@ -744,25 +745,40 @@ public final class MainActivity extends Activity implements TvScreen.Actions, Pl
 
     private void showAudioTracks() {
         List<TvTrackInfo> tracks = playback.audioTracks();
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle(R.string.option_audio_tracks)
+        AlertDialog.Builder builder = new AlertDialog.Builder(this).setTitle(R.string.option_audio_tracks)
                 .setNegativeButton(R.string.action_close, null);
+        boolean hasUnlabeledTrack = false;
         if (tracks.isEmpty()) {
-            dialog.setMessage(R.string.audio_dialog_empty);
+            builder.setMessage(R.string.audio_dialog_empty);
         } else {
             String[] labels = new String[tracks.size()];
             int selected = TrackLabels.selectedIndex(tracks, playback.selectedAudioTrack());
             long channel = playback.channelId();
             for (int index = 0; index < tracks.size(); index++) {
-                labels[index] = TrackLabels.label(this, tracks.get(index), index);
+                TvTrackInfo track = tracks.get(index);
+                labels[index] = TrackLabels.label(this, track, index);
+                if (TrackLabels.trackName(this, track).isEmpty()) hasUnlabeledTrack = true;
             }
-            dialog.setSingleChoiceItems(labels, selected, (view, index) -> {
+            builder.setSingleChoiceItems(labels, selected, (view, index) -> {
                 if (!playback.selectAudioTrack(channel, tracks.get(index).getId())) {
                     Toast.makeText(this, R.string.audio_toast_changed, Toast.LENGTH_SHORT).show();
                 }
                 view.dismiss();
             });
         }
-        dialog.show();
+        AlertDialog dialog = builder.show();
+        if (tracks.size() > 1 && hasUnlabeledTrack && dialog.getListView() != null) {
+            TvStyle style = new TvStyle(this);
+            TextView hint = new TextView(this);
+            hint.setText(R.string.audio_dialog_hint);
+            hint.setTextColor(TvStyle.MUTED);
+            hint.setTextSize(14f);
+            int padH = style.dp(24);
+            int padV = style.dp(12);
+            hint.setPadding(padH, padV, padH, padV);
+            hint.setFocusable(false);
+            dialog.getListView().addFooterView(hint, null, false);
+        }
     }
 
     private boolean isListingsPermissionPermanentlyDenied() {

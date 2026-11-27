@@ -30,7 +30,12 @@ final class TvStyle {
     static final int MUTED = 0xff8c90a0;
     static final int FOCUS = 0xffffffff;
     static final int FOCUS_TEXT = 0xff101115;
-    static final int RED_LIVE = 0xffd32f2f;
+    static final int LIVE_TEXT = 0xff34d399;
+    static final int LIVE_BG = 0x2410b981;
+    static final int LIVE_BORDER = 0x6634d399;
+    static final int LIVE_TEXT_ON_LIGHT = 0xff047857;
+    static final int LIVE_BG_ON_LIGHT = 0x1a059669;
+    static final int LIVE_BORDER_ON_LIGHT = 0x44059669;
     static final int GOLD_GUIDE = 0xfff59e0b;
     static final int PILL_DEFAULT = 0xff282b35;
 
@@ -142,12 +147,43 @@ final class TvStyle {
     }
 
     void setLeadingIcon(TextView view, int iconRes, int sizeDp) {
+        setLeadingIcon(view, iconRes, sizeDp, 8);
+    }
+
+    void setLeadingIcon(TextView view, int iconRes, int sizeDp, int paddingDp) {
         Drawable icon = context.getDrawable(iconRes).mutate();
         int size = dp(sizeDp);
         icon.setBounds(0, 0, size, size);
-        view.setCompoundDrawablePadding(dp(8));
+        view.setCompoundDrawablePadding(dp(paddingDp));
         view.setCompoundDrawablesRelative(icon, null, null, null);
         view.setCompoundDrawableTintList(view.getTextColors());
+    }
+
+    void styleLiveBadge(TextView badge, boolean onLight) {
+        badge.setGravity(Gravity.CENTER_VERTICAL);
+        badge.setPadding(dp(7), dp(2), dp(8), dp(2));
+        badge.setTextColor(onLight ? LIVE_TEXT_ON_LIGHT : LIVE_TEXT);
+        badge.setBackground(surface(
+                onLight ? LIVE_BG_ON_LIGHT : LIVE_BG,
+                99,
+                onLight ? LIVE_BORDER_ON_LIGHT : LIVE_BORDER));
+        setLeadingIcon(badge, R.drawable.ic_playing, 11, 4);
+    }
+
+    void styleSelectableLiveBadge(TextView badge) {
+        badge.setGravity(Gravity.CENTER_VERTICAL);
+        badge.setPadding(dp(7), dp(2), dp(8), dp(2));
+        badge.setDuplicateParentStateEnabled(true);
+        ColorStateList textColors = new ColorStateList(
+                new int[][]{SELECTED, FOCUSED, DEFAULT},
+                new int[]{LIVE_TEXT_ON_LIGHT, LIVE_TEXT_ON_LIGHT, LIVE_TEXT});
+        badge.setTextColor(textColors);
+        StateListDrawable background = new StateListDrawable();
+        background.addState(SELECTED, surface(LIVE_BG_ON_LIGHT, 99, LIVE_BORDER_ON_LIGHT));
+        background.addState(FOCUSED, surface(LIVE_BG_ON_LIGHT, 99, LIVE_BORDER_ON_LIGHT));
+        background.addState(DEFAULT, surface(LIVE_BG, 99, LIVE_BORDER));
+        badge.setBackground(background);
+        setLeadingIcon(badge, R.drawable.ic_playing, 11, 4);
     }
 
     ColorStateList focusText(int restingColor) {

@@ -9,11 +9,15 @@ import android.media.tv.TvContract;
 import android.media.tv.TvInputManager;
 import android.media.tv.TvTrackInfo;
 import android.media.tv.TvView;
+import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 final class Playback {
     static final String TAG = "DtmbPlayback";
@@ -214,7 +218,18 @@ final class Playback {
     }
 
     List<TvTrackInfo> audioTracks() {
-        return tracks(TvTrackInfo.TYPE_AUDIO);
+        List<TvTrackInfo> raw = tracks(TvTrackInfo.TYPE_AUDIO);
+        if (raw.isEmpty()) return raw;
+        List<TvTrackInfo> filtered = new ArrayList<>(raw.size());
+        Set<String> seenIds = new HashSet<>();
+        for (TvTrackInfo track : raw) {
+            if (track == null || track.getId() == null || !seenIds.add(track.getId())) continue;
+            // 过滤 MTK 上报的非独立附属混音轨（AUD_MIX_TYPE_SUPPLEMENTARY = 1）
+            Bundle extra = track.getExtra();
+            if (extra != null && "1".equals(extra.getString("key_AudioMixType"))) continue;
+            filtered.add(track);
+        }
+        return filtered.isEmpty() ? raw : filtered;
     }
 
     List<TvTrackInfo> subtitleTracks() {
